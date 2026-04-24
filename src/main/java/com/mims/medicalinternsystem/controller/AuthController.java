@@ -1,8 +1,12 @@
 package com.mims.medicalinternsystem.controller;
 
 import com.mims.medicalinternsystem.dto.LoginRequest;
+import com.mims.medicalinternsystem.entity.User;
+import com.mims.medicalinternsystem.enums.Role;
+import com.mims.medicalinternsystem.repository.UserRepository;
 import com.mims.medicalinternsystem.service.AuthService;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.Map;
@@ -13,6 +17,12 @@ public class AuthController {
 
     @Autowired
     private AuthService authService;
+
+    @Autowired
+    private UserRepository userRepository;
+
+    @Autowired
+    private PasswordEncoder passwordEncoder;
 
     @PostMapping("/login")
     public Map<String, String> login(@RequestBody LoginRequest request) {
@@ -27,5 +37,20 @@ public class AuthController {
     @PostMapping("/logout")
     public String logout(@RequestParam String refreshToken) {
         return authService.logout(refreshToken);
+    }
+
+    @PostMapping("/seed")
+    public String seed() {
+
+        User user = new User();
+        user.setEmail("test@gmail.com");
+        user.setPassword(passwordEncoder.encode("1234")); // 🔐 encoded
+        user.setRole(Role.INTERN);
+        user.setAccountLocked(false);
+        user.setFailedAttempts(0);
+
+        userRepository.save(user);
+
+        return "User created";
     }
 }
