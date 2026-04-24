@@ -27,11 +27,13 @@ public class SecurityConfig {
         http
                 .csrf(csrf -> csrf.disable())
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers("/api/auth/**").permitAll()
+                        .requestMatchers(
+                                "/api/auth/**",
+                                "/health"   // ✅ ADD THIS
+                        ).permitAll()
                         .requestMatchers("/api/admin/**").hasRole("ADMIN")
                         .requestMatchers("/api/doctor/**").hasRole("DOCTOR")
                         .requestMatchers("/api/intern/**").hasRole("INTERN")
-                        .requestMatchers("/api/payment/**").hasRole("ADMIN")
                         .anyRequest().authenticated()
                 )
                 .addFilterBefore(rateLimitFilter, UsernamePasswordAuthenticationFilter.class) // optional order
