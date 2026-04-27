@@ -2,21 +2,25 @@ package com.mims.medicalinternsystem.security;
 
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
-import jakarta.servlet.http.*;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
+
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
+
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
 
 import java.io.IOException;
-import java.util.List;
+import java.util.Collections;
 
 @Component
 public class JwtFilter extends OncePerRequestFilter {
 
     @Autowired
-    private JwtUtil jwtUtil;
+    private JwtUtil jwtUtil; // ✅ FIXED
 
     @Override
     protected void doFilterInternal(HttpServletRequest request,
@@ -32,8 +36,15 @@ public class JwtFilter extends OncePerRequestFilter {
             try {
                 String email = jwtUtil.extractEmail(token);
 
+                // ✅ SET AUTHENTICATION
                 UsernamePasswordAuthenticationToken auth =
-                        new UsernamePasswordAuthenticationToken(email, null, List.of());
+                        new UsernamePasswordAuthenticationToken(
+                                email,
+                                null,
+                                Collections.singletonList(
+                                        new SimpleGrantedAuthority("ROLE_INTERN")
+                                )
+                        );
 
                 SecurityContextHolder.getContext().setAuthentication(auth);
 
@@ -43,6 +54,6 @@ public class JwtFilter extends OncePerRequestFilter {
             }
         }
 
-        filterChain.doFilter(request, response);
+        filterChain.doFilter(request, response); // ✅ ALWAYS CALL
     }
 }
