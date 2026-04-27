@@ -48,14 +48,25 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ErrorResponse> handleAll(Exception ex) {
 
-        log.error("Unhandled exception occurred", ex);
+        log.error("Unhandled exception occurred", ex); // 🔍 internal logging
 
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                 .body(new ErrorResponse(
                         LocalDateTime.now(),
                         500,
                         "Internal Server Error",
-                        ex.getMessage() // 🔥 SHOW REAL ERROR (TEMP)
+                        "Something went wrong" // 🔒 safe for users
+                ));
+    }
+
+    @ExceptionHandler(UnauthorizedException.class)
+    public ResponseEntity<ErrorResponse> handleUnauthorized(UnauthorizedException ex) {
+        return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                .body(new ErrorResponse(
+                        LocalDateTime.now(),
+                        401,
+                        "Unauthorized",
+                        ex.getMessage()
                 ));
     }
 }

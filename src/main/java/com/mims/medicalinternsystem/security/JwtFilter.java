@@ -6,6 +6,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
@@ -20,7 +21,10 @@ import java.util.Collections;
 public class JwtFilter extends OncePerRequestFilter {
 
     @Autowired
-    private JwtUtil jwtUtil; // ✅ FIXED
+    private JwtUtil jwtUtil;
+
+    @Autowired
+    private CustomUserDetailsService userDetailsService; // 🔥 IMPORTANT
 
     @Override
     protected void doFilterInternal(HttpServletRequest request,
@@ -36,14 +40,16 @@ public class JwtFilter extends OncePerRequestFilter {
             try {
                 String email = jwtUtil.extractEmail(token);
 
-                // ✅ SET AUTHENTICATION
+                // 🔥 LOAD USER FROM DB
+                UserDetails userDetails =
+                        userDetailsService.loadUserByUsername(email);
+
+                // 🔥 SET AUTH WITH REAL ROLES
                 UsernamePasswordAuthenticationToken auth =
                         new UsernamePasswordAuthenticationToken(
-                                email,
+                                userDetails,
                                 null,
-                                Collections.singletonList(
-                                        new SimpleGrantedAuthority("ROLE_INTERN")
-                                )
+                                userDetails.getAuthorities()
                         );
 
                 SecurityContextHolder.getContext().setAuthentication(auth);
@@ -54,6 +60,6 @@ public class JwtFilter extends OncePerRequestFilter {
             }
         }
 
-        filterChain.doFilter(request, response); // ✅ ALWAYS CALL
+        filterChain.doFilter(request, response);
     }
 }
