@@ -56,12 +56,12 @@ public class SecurityConfig {
                         .anyRequest().authenticated()
                 );
 
-        // ✅ Add RateLimit FIRST (if exists)
+        // ✅ Rate limit FIRST
         if (rateLimitFilter != null) {
             http.addFilterBefore(rateLimitFilter, UsernamePasswordAuthenticationFilter.class);
         }
 
-        // ✅ Add JWT filter ONCE
+        // ✅ JWT filter AFTER rate limit
         http.addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter.class);
 
         return http.build();
