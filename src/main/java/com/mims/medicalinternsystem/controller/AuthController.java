@@ -58,7 +58,12 @@ public class AuthController {
     }
 
     @PostMapping("/register")
-    public String register(@RequestBody RegisterRequest request) {
+    public Map<String, String> register(@RequestBody RegisterRequest request) {
+
+        // 🔥 CHECK IF USER EXISTS
+        if (userRepository.findByEmail(request.getEmail()).isPresent()) {
+            throw new RuntimeException("User already exists");
+        }
 
         User user = new User();
         user.setEmail(request.getEmail());
@@ -69,6 +74,6 @@ public class AuthController {
 
         userRepository.save(user);
 
-        return "User registered";
+        return Map.of("message", "User registered successfully");
     }
 }
