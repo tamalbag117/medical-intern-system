@@ -36,7 +36,7 @@ public class SecurityConfig {
                         .requestMatchers("/api/intern/**").hasRole("INTERN")
                         .anyRequest().authenticated()
                 )
-                .addFilterBefore(rateLimitFilter, UsernamePasswordAuthenticationFilter.class) // optional order
+                //.addFilterBefore(rateLimitFilter, UsernamePasswordAuthenticationFilter.class) // optional order
                 .addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter.class);
 
         return http.build();
