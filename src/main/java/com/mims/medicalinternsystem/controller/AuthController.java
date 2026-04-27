@@ -1,6 +1,7 @@
 package com.mims.medicalinternsystem.controller;
 
 import com.mims.medicalinternsystem.dto.LoginRequest;
+import com.mims.medicalinternsystem.dto.RegisterRequest;
 import com.mims.medicalinternsystem.entity.User;
 import com.mims.medicalinternsystem.enums.Role;
 import com.mims.medicalinternsystem.repository.UserRepository;
@@ -23,6 +24,8 @@ public class AuthController {
 
     @Autowired
     private PasswordEncoder passwordEncoder;
+
+
 
     @PostMapping("/login")
     public Map<String, String> login(@RequestBody LoginRequest request) {
@@ -52,5 +55,20 @@ public class AuthController {
         userRepository.save(user);
 
         return "User created";
+    }
+
+    @PostMapping("/register")
+    public String register(@RequestBody RegisterRequest request) {
+
+        User user = new User();
+        user.setEmail(request.getEmail());
+        user.setPassword(passwordEncoder.encode(request.getPassword()));
+        user.setRole(Role.INTERN);
+        user.setAccountLocked(false);
+        user.setFailedAttempts(0);
+
+        userRepository.save(user);
+
+        return "User registered";
     }
 }
