@@ -24,23 +24,19 @@ public class SecurityConfig {
     @Autowired
     private JwtFilter jwtFilter;
 
-    @Autowired(required = false) // optional: app still runs if not present
+    @Autowired(required = false)
     private RateLimitFilter rateLimitFilter;
 
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
 
         http
-                // ❌ Disable CSRF (JWT is stateless)
                 .csrf(csrf -> csrf.disable())
 
-                // 🔥 Make app stateless (NO sessions)
                 .sessionManagement(session ->
                         session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
 
-                // 🔐 Authorization rules
                 .authorizeHttpRequests(auth -> auth
-                        // ✅ Public endpoints
                         .requestMatchers(
                                 "/api/auth/login",
                                 "/api/auth/register",
@@ -48,27 +44,24 @@ public class SecurityConfig {
                                 "/health"
                         ).permitAll()
 
-                        // 🔐 Role-based endpoints
                         .requestMatchers("/api/admin/**").hasRole("ADMIN")
                         .requestMatchers("/api/doctor/**").hasRole("DOCTOR")
                         .requestMatchers("/api/intern/**").hasRole("INTERN")
 
-                        // 🔒 Everything else requires authentication
                         .anyRequest().authenticated()
                 );
 
-        // ⚡ Rate limiting FIRST (optional)
+        // ✅ Add RateLimit FIRST (if exists)
         if (rateLimitFilter != null) {
-            http.addFilterBefore(rateLimitFilter, JwtFilter.class);
+            http.addFilterBefore(rateLimitFilter, UsernamePasswordAuthenticationFilter.class);
         }
 
-        // 🔐 JWT authentication filter
+        // ✅ Add JWT filter ONCE
         http.addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter.class);
 
         return http.build();
     }
 
-    // 🔑 Password encoder (BCrypt)
     @Bean
     public PasswordEncoder passwordEncoder() {
         return new BCryptPasswordEncoder();
