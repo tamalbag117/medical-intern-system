@@ -3,7 +3,6 @@ package com.mims.medicalinternsystem.controller;
 import com.mims.medicalinternsystem.entity.ActivityLog;
 import com.mims.medicalinternsystem.service.ActivityService;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -34,6 +33,7 @@ public class ActivityController {
         return service.allLogs();
     }
 
+    // 🔥 Doctor review
     @PostMapping("/review")
     public ActivityLog review(@RequestParam Long id,
                               @RequestParam String status,
@@ -41,12 +41,16 @@ public class ActivityController {
         return service.review(id, status, remarks);
     }
 
-    //Doctor View Pending Logs
-
-
-
+    // 🔥 Doctor pending
     @GetMapping("/pending")
     public List<ActivityLog> pending() {
         return service.pendingLogs();
+    }
+
+    // 🔥 DELETE (FIXED)
+    @DeleteMapping("/{id}")
+    public String delete(@PathVariable Long id) {
+        service.delete(id); // ✅ FIXED
+        return "Deleted successfully";
     }
 }

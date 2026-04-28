@@ -30,7 +30,7 @@ public class ActivityService {
         log.setPatientName(patientName);
         log.setTask(task);
         log.setTimestamp(LocalDateTime.now());
-        log.setStatus("PENDING"); // 🔥 important
+        log.setStatus("PENDING");
 
         return repo.save(log);
     }
@@ -38,7 +38,6 @@ public class ActivityService {
     // 🔥 INTERN sees own logs
     @PreAuthorize("hasRole('INTERN')")
     public List<ActivityLog> myLogs() {
-
         String email = SecurityContextHolder
                 .getContext()
                 .getAuthentication()
@@ -53,6 +52,7 @@ public class ActivityService {
         return repo.findAll();
     }
 
+    // 🔥 DOCTOR reviews
     @PreAuthorize("hasRole('DOCTOR')")
     public ActivityLog review(Long id, String status, String remarks) {
 
@@ -64,18 +64,27 @@ public class ActivityService {
                 .getAuthentication()
                 .getName();
 
-        log.setStatus(status); // APPROVED / REJECTED
+        log.setStatus(status);
         log.setReviewedBy(doctorEmail);
         log.setRemarks(remarks);
 
         return repo.save(log);
     }
 
+    // 🔥 DOCTOR sees pending
     @PreAuthorize("hasRole('DOCTOR')")
     public List<ActivityLog> pendingLogs() {
         return repo.findAll()
                 .stream()
                 .filter(log -> "PENDING".equals(log.getStatus()))
                 .toList();
+    }
+
+    // 🔥 DELETE (fix applied)
+    public void delete(Long id) {
+        ActivityLog log = repo.findById(id)
+                .orElseThrow(() -> new RuntimeException("Activity not found"));
+
+        repo.delete(log);
     }
 }
