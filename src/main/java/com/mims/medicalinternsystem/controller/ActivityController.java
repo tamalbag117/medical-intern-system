@@ -53,4 +53,11 @@ public class ActivityController {
         service.delete(id); // ✅ FIXED
         return "Deleted successfully";
     }
+
+    @PutMapping("/{id}")
+    public ActivityLog update(@PathVariable Long id,
+                              @RequestParam String patient,
+                              @RequestParam String task) {
+        return service.update(id, patient, task);
+    }
 }

@@ -87,4 +87,17 @@ public class ActivityService {
 
         repo.delete(log);
     }
+
+    public ActivityLog update(Long id, String patientName, String task) {
+
+        ActivityLog log = repo.findById(id)
+                .orElseThrow(() -> new RuntimeException("Activity not found"));
+
+        log.setPatientName(patientName);
+        log.setTask(task);
+
+        return repo.save(log);
+    }
+
+
 }
