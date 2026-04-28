@@ -14,50 +14,56 @@ public class ActivityController {
     @Autowired
     private ActivityService service;
 
-    // 🔥 Log activity
+    // 🔥 Create activity (UPDATED)
     @PostMapping
-    public ActivityLog log(@RequestParam String patient,
-                           @RequestParam String task) {
-        return service.logActivity(patient, task);
+    public ActivityLog log(
+            @RequestParam String patient,
+            @RequestParam String task,
+            @RequestParam(required = false) String reason,
+            @RequestParam(required = false) String remarks
+    ) {
+        return service.logActivity(patient, task, reason, remarks);
     }
 
-    // 🔥 Get my logs
     @GetMapping("/my")
     public List<ActivityLog> myLogs() {
         return service.myLogs();
     }
 
-    // 🔥 Admin view
     @GetMapping("/all")
     public List<ActivityLog> allLogs() {
         return service.allLogs();
     }
 
-    // 🔥 Doctor review
     @PostMapping("/review")
-    public ActivityLog review(@RequestParam Long id,
-                              @RequestParam String status,
-                              @RequestParam(required = false) String remarks) {
+    public ActivityLog review(
+            @RequestParam Long id,
+            @RequestParam String status,
+            @RequestParam(required = false) String remarks
+    ) {
         return service.review(id, status, remarks);
     }
 
-    // 🔥 Doctor pending
     @GetMapping("/pending")
     public List<ActivityLog> pending() {
         return service.pendingLogs();
     }
 
-    // 🔥 DELETE (FIXED)
     @DeleteMapping("/{id}")
     public String delete(@PathVariable Long id) {
-        service.delete(id); // ✅ FIXED
+        service.delete(id);
         return "Deleted successfully";
     }
 
+    // 🔥 UPDATE (UPDATED)
     @PutMapping("/{id}")
-    public ActivityLog update(@PathVariable Long id,
-                              @RequestParam String patient,
-                              @RequestParam String task) {
-        return service.update(id, patient, task);
+    public ActivityLog update(
+            @PathVariable Long id,
+            @RequestParam String patient,
+            @RequestParam String task,
+            @RequestParam(required = false) String reason,
+            @RequestParam(required = false) String remarks
+    ) {
+        return service.update(id, patient, task, reason, remarks);
     }
 }

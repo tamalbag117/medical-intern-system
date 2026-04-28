@@ -1,7 +1,5 @@
 package com.mims.medicalinternsystem.entity;
 
-
-
 import com.mims.medicalinternsystem.enums.Role;
 import jakarta.persistence.*;
 import lombok.*;
@@ -15,7 +13,10 @@ public class User {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
+    // 🔐 Auth fields
+    @Column(unique = true, nullable = false)
     private String email;
+
     private String password;
 
     @Enumerated(EnumType.STRING)
@@ -23,4 +24,12 @@ public class User {
 
     private int failedAttempts = 0;
     private boolean accountLocked = false;
+
+    // 👤 Profile fields (NEW)
+    private String firstName;
+    private String lastName;
+    private Integer age;
+
+    @Column(length = 10)
+    private String phone;
 }

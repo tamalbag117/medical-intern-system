@@ -7,6 +7,7 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
 
@@ -16,53 +17,48 @@ public class ActivityService {
     @Autowired
     private ActivityLogRepository repo;
 
-    // 🔥 INTERN logs activity
+    // 🔥 CREATE
     @PreAuthorize("hasRole('INTERN')")
-    public ActivityLog logActivity(String patientName, String task) {
+    public ActivityLog logActivity(String patientName, String task, String reason, String remarks) {
 
-        String email = SecurityContextHolder
-                .getContext()
-                .getAuthentication()
-                .getName();
+        String email = SecurityContextHolder.getContext().getAuthentication().getName();
 
         ActivityLog log = new ActivityLog();
+
+        log.setPatientId("PAT-" + System.currentTimeMillis()); // 🔥 UNIQUE ID
         log.setInternEmail(email);
         log.setPatientName(patientName);
         log.setTask(task);
+        log.setMedicalReason(reason);
+        log.setRemarks(remarks);
+        log.setVisitDate(LocalDate.now());
         log.setTimestamp(LocalDateTime.now());
         log.setStatus("PENDING");
 
         return repo.save(log);
     }
 
-    // 🔥 INTERN sees own logs
+    // 🔥 READ (INTERN)
     @PreAuthorize("hasRole('INTERN')")
     public List<ActivityLog> myLogs() {
-        String email = SecurityContextHolder
-                .getContext()
-                .getAuthentication()
-                .getName();
-
+        String email = SecurityContextHolder.getContext().getAuthentication().getName();
         return repo.findByInternEmail(email);
     }
 
-    // 🔥 ADMIN sees all
+    // 🔥 READ (ADMIN)
     @PreAuthorize("hasRole('ADMIN')")
     public List<ActivityLog> allLogs() {
         return repo.findAll();
     }
 
-    // 🔥 DOCTOR reviews
+    // 🔥 REVIEW (DOCTOR)
     @PreAuthorize("hasRole('DOCTOR')")
     public ActivityLog review(Long id, String status, String remarks) {
 
         ActivityLog log = repo.findById(id)
                 .orElseThrow(() -> new RuntimeException("Activity not found"));
 
-        String doctorEmail = SecurityContextHolder
-                .getContext()
-                .getAuthentication()
-                .getName();
+        String doctorEmail = SecurityContextHolder.getContext().getAuthentication().getName();
 
         log.setStatus(status);
         log.setReviewedBy(doctorEmail);
@@ -71,7 +67,7 @@ public class ActivityService {
         return repo.save(log);
     }
 
-    // 🔥 DOCTOR sees pending
+    // 🔥 PENDING
     @PreAuthorize("hasRole('DOCTOR')")
     public List<ActivityLog> pendingLogs() {
         return repo.findAll()
@@ -80,7 +76,7 @@ public class ActivityService {
                 .toList();
     }
 
-    // 🔥 DELETE (fix applied)
+    // 🔥 DELETE
     public void delete(Long id) {
         ActivityLog log = repo.findById(id)
                 .orElseThrow(() -> new RuntimeException("Activity not found"));
@@ -88,16 +84,17 @@ public class ActivityService {
         repo.delete(log);
     }
 
-    public ActivityLog update(Long id, String patientName, String task) {
+    // 🔥 UPDATE
+    public ActivityLog update(Long id, String patientName, String task, String reason, String remarks) {
 
         ActivityLog log = repo.findById(id)
                 .orElseThrow(() -> new RuntimeException("Activity not found"));
 
         log.setPatientName(patientName);
         log.setTask(task);
+        log.setMedicalReason(reason);
+        log.setRemarks(remarks);
 
         return repo.save(log);
     }
-
-
 }

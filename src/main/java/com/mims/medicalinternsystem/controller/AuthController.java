@@ -6,6 +6,7 @@ import com.mims.medicalinternsystem.entity.User;
 import com.mims.medicalinternsystem.enums.Role;
 import com.mims.medicalinternsystem.repository.UserRepository;
 import com.mims.medicalinternsystem.service.AuthService;
+import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.web.bind.annotation.*;
@@ -25,8 +26,6 @@ public class AuthController {
     @Autowired
     private PasswordEncoder passwordEncoder;
 
-
-
     @PostMapping("/login")
     public Map<String, String> login(@RequestBody LoginRequest request) {
         return authService.login(request);
@@ -42,32 +41,25 @@ public class AuthController {
         return authService.logout(refreshToken);
     }
 
-    @PostMapping("/seed")
-    public String seed() {
-
-        User user = new User();
-        user.setEmail("test@gmail.com");
-        user.setPassword(passwordEncoder.encode("1234")); // 🔐 encoded
-        user.setRole(Role.INTERN);
-        user.setAccountLocked(false);
-        user.setFailedAttempts(0);
-
-        userRepository.save(user);
-
-        return "User created";
-    }
-
     @PostMapping("/register")
-    public Map<String, String> register(@RequestBody RegisterRequest request) {
+    public Map<String, String> register(@Valid @RequestBody RegisterRequest request) {
 
-        // 🔥 CHECK IF USER EXISTS
         if (userRepository.findByEmail(request.getEmail()).isPresent()) {
             throw new RuntimeException("User already exists");
         }
 
         User user = new User();
+
+        // 👤 Profile fields
+        user.setFirstName(request.getFirstName());
+        user.setLastName(request.getLastName());
+        user.setAge(request.getAge());
+        user.setPhone(request.getPhone());
+
+        // 🔐 Auth
         user.setEmail(request.getEmail());
         user.setPassword(passwordEncoder.encode(request.getPassword()));
+
         user.setRole(Role.INTERN);
         user.setAccountLocked(false);
         user.setFailedAttempts(0);
