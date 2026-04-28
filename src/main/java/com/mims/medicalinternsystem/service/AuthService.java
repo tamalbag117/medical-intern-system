@@ -11,9 +11,11 @@ import com.mims.medicalinternsystem.security.JwtUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import com.mims.medicalinternsystem.service.CaptchaService;
+
 
 import java.time.LocalDateTime;
 import java.util.Map;
@@ -42,6 +44,9 @@ public class AuthService {
     @Autowired
     private CaptchaService captchaService;
 
+    @Value("${captcha.enabled:false}")
+    private boolean captchaEnabled;
+
 
 
     // 🔐 LOGIN METHOD
@@ -49,7 +54,7 @@ public class AuthService {
 
         log.info("Login attempt for {}", request.getEmail());
 
-        if (!captchaService.verify(request.getCaptchaToken())) {
+        if (captchaEnabled && !captchaService.verify(request.getCaptchaToken())) {
             log.warn("Captcha failed for {}", request.getEmail());
             throw new BadRequestException("Captcha verification failed");
         }
