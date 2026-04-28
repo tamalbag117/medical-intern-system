@@ -14,8 +14,8 @@ WORKDIR /app
 
 COPY --from=builder /app/target/*.jar app.jar
 
-# 🔥 VERY IMPORTANT
-EXPOSE 10000
+# 🔥 DO NOT hardcode port
+EXPOSE 8080
 
-# 🔥 THIS FIXES YOUR ISSUE
-ENTRYPOINT ["sh", "-c", "java -Dserver.port=$PORT -jar app.jar"]
+# 🔥 FORCE BIND TO RENDER PORT
+ENTRYPOINT ["sh", "-c", "java -Dserver.port=$PORT -Dserver.address=0.0.0.0 -jar app.jar"]
