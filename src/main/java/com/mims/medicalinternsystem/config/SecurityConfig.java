@@ -38,14 +38,14 @@ public class SecurityConfig {
                 // 🔥 CORS
                 .cors(cors -> cors.configurationSource(corsConfigurationSource()))
 
-                // 🔥 CSRF disabled (stateless API)
+                // 🔥 CSRF disabled
                 .csrf(csrf -> csrf.disable())
 
-                // 🔥 Stateless session (JWT)
+                // 🔥 Stateless session
                 .sessionManagement(session ->
                         session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
 
-                // 🔥 Security headers (IMPORTANT)
+                // 🔥 Security headers
                 .headers(headers -> headers
                         .contentSecurityPolicy(csp ->
                                 csp.policyDirectives("default-src 'self'")
@@ -56,13 +56,12 @@ public class SecurityConfig {
                         )
                 )
 
-                // 🔥 Authorization rules
+                // 🔥 Authorization rules (FIXED)
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(
-                                "/api/auth/login",
-                                "/api/auth/register",
-                                "/api/auth/refresh",
+                                "/",               // ✅ FIX: allow root
                                 "/health",
+                                "/api/auth/**",
                                 "/v3/api-docs/**",
                                 "/swagger-ui/**",
                                 "/swagger-ui.html"
@@ -75,7 +74,7 @@ public class SecurityConfig {
                         .anyRequest().authenticated()
                 );
 
-        // 🔥 Rate limit FIRST (anti-abuse)
+        // 🔥 Rate limit
         if (rateLimitFilter != null) {
             http.addFilterBefore(rateLimitFilter, UsernamePasswordAuthenticationFilter.class);
         }
@@ -86,21 +85,18 @@ public class SecurityConfig {
         return http.build();
     }
 
-    // 🔥 CORS CONFIG (STRICTER VERSION)
+    // 🔥 CORS CONFIG (production-safe version)
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
 
         CorsConfiguration config = new CorsConfiguration();
 
-        // ⚠️ In production, replace "*" with your frontend domain
+        // ⚠️ Replace "*" with your frontend URL later
         config.setAllowedOriginPatterns(List.of("*"));
 
         config.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
 
-        config.setAllowedHeaders(List.of(
-                "Authorization",
-                "Content-Type"
-        ));
+        config.setAllowedHeaders(List.of("Authorization", "Content-Type"));
 
         config.setExposedHeaders(List.of("Authorization"));
 
@@ -112,7 +108,6 @@ public class SecurityConfig {
         return source;
     }
 
-    // 🔐 Password encoder
     @Bean
     public PasswordEncoder passwordEncoder() {
         return new BCryptPasswordEncoder();
