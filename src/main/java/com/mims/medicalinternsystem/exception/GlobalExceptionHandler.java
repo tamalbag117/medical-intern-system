@@ -48,14 +48,14 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ErrorResponse> handleAll(Exception ex) {
 
-        log.error("Unhandled exception occurred", ex); // 🔍 internal logging
+        ex.printStackTrace(); // 🔥 IMPORTANT
 
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                 .body(new ErrorResponse(
                         LocalDateTime.now(),
                         500,
                         "Internal Server Error",
-                        "Something went wrong" // 🔒 safe for users
+                        ex.getMessage()   // 🔥 SHOW REAL ERROR
                 ));
     }
 
