@@ -8,6 +8,6 @@ public class HomeController {
 
     @GetMapping("/")
     public String home() {
-        return "Backend is running 🚀";
+        return "Medical Intern System Running 🚀";
     }
 }
