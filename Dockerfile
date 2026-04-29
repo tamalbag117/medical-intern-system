@@ -15,4 +15,4 @@ COPY --from=builder /app/target/*.jar app.jar
 EXPOSE 10000
 
 # 🔥 CRITICAL FIX
-ENTRYPOINT ["sh", "-c", "java -Dserver.port=${PORT:-10000} -Dserver.address=0.0.0.0 -jar app.jar"]
+ENTRYPOINT ["java", "-Dserver.port=10000", "-Dserver.address=0.0.0.0", "-jar", "app.jar"]
