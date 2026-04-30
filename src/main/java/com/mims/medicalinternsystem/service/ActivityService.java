@@ -2,10 +2,17 @@ package com.mims.medicalinternsystem.service;
 
 import com.mims.medicalinternsystem.entity.ActivityLog;
 import com.mims.medicalinternsystem.repository.ActivityLogRepository;
+
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
+
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.context.SecurityContextHolder;
-import org.springframework.stereotype.Service;
+
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -17,7 +24,7 @@ public class ActivityService {
     @Autowired
     private ActivityLogRepository repo;
 
-    // 🔥 CREATE
+    // ✅ CREATE
     @PreAuthorize("hasRole('INTERN')")
     public ActivityLog logActivity(String patientName, String task, String reason, String remarks) {
 
@@ -25,7 +32,7 @@ public class ActivityService {
 
         ActivityLog log = new ActivityLog();
 
-        log.setPatientId("PAT-" + System.currentTimeMillis()); // 🔥 UNIQUE ID
+        log.setPatientId("PAT-" + System.currentTimeMillis());
         log.setInternEmail(email);
         log.setPatientName(patientName);
         log.setTask(task);
@@ -38,20 +45,20 @@ public class ActivityService {
         return repo.save(log);
     }
 
-    // 🔥 READ (INTERN)
+    // ✅ INTERN
     @PreAuthorize("hasRole('INTERN')")
     public List<ActivityLog> myLogs() {
         String email = SecurityContextHolder.getContext().getAuthentication().getName();
         return repo.findByInternEmail(email);
     }
 
-    // 🔥 READ (ADMIN)
+    // ✅ ADMIN
     @PreAuthorize("hasRole('ADMIN')")
     public List<ActivityLog> allLogs() {
         return repo.findAll();
     }
 
-    // 🔥 REVIEW (DOCTOR)
+    // ✅ DOCTOR REVIEW
     @PreAuthorize("hasRole('DOCTOR')")
     public ActivityLog review(Long id, String status, String remarks) {
 
@@ -67,7 +74,7 @@ public class ActivityService {
         return repo.save(log);
     }
 
-    // 🔥 PENDING
+    // ✅ DOCTOR PENDING
     @PreAuthorize("hasRole('DOCTOR')")
     public List<ActivityLog> pendingLogs() {
         return repo.findAll()
@@ -76,7 +83,7 @@ public class ActivityService {
                 .toList();
     }
 
-    // 🔥 DELETE
+    // ✅ DELETE
     public void delete(Long id) {
         ActivityLog log = repo.findById(id)
                 .orElseThrow(() -> new RuntimeException("Activity not found"));
@@ -84,7 +91,7 @@ public class ActivityService {
         repo.delete(log);
     }
 
-    // 🔥 UPDATE
+    // ✅ UPDATE
     public ActivityLog update(Long id, String patientName, String task, String reason, String remarks) {
 
         ActivityLog log = repo.findById(id)
@@ -96,5 +103,29 @@ public class ActivityService {
         log.setRemarks(remarks);
 
         return repo.save(log);
+    }
+
+    // ✅ PAGINATION (INTERN)
+    public Page<ActivityLog> myLogsPaged(int page, int size, String search) {
+
+        String email = SecurityContextHolder.getContext().getAuthentication().getName();
+
+        Pageable pageable = PageRequest.of(
+                page,
+                size,
+                Sort.by("timestamp").descending()
+        );
+
+        if (search != null && !search.isEmpty()) {
+            return repo.findByInternEmailAndPatientNameContainingIgnoreCase(email, search, pageable);
+        }
+
+        return repo.findByInternEmail(email, pageable);
+    }
+
+    // ✅ PAGINATION (DOCTOR)
+    public Page<ActivityLog> pendingPaged(int page, int size) {
+        Pageable pageable = PageRequest.of(page, size);
+        return repo.findByStatus("PENDING", pageable);
     }
 }
