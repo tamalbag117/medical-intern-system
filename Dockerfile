@@ -12,8 +12,6 @@ WORKDIR /app
 
 COPY --from=builder /app/target/medical-intern-system-0.0.1-SNAPSHOT.jar app.jar
 
-# optional (not required but safe)
 EXPOSE 8080
 
-# 🔥 DO NOT FIX PORT HERE
 ENTRYPOINT ["java", "-Xmx256m", "-jar", "app.jar"]
