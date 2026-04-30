@@ -16,13 +16,13 @@ public class ActivityController {
 
     // 🔥 Create activity (UPDATED)
     @PostMapping
-    public ActivityLog log(
-            @RequestParam String patient,
-            @RequestParam String task,
-            @RequestParam(required = false) String reason,
-            @RequestParam(required = false) String remarks
-    ) {
-        return service.logActivity(patient, task, reason, remarks);
+    public ActivityLog log(@RequestBody ActivityLog request) {
+        return service.logActivity(
+                request.getPatientName(),
+                request.getTask(),
+                request.getMedicalReason(),
+                request.getRemarks()
+        );
     }
 
     @GetMapping("/my")
@@ -55,15 +55,19 @@ public class ActivityController {
         return "Deleted successfully";
     }
 
-    // 🔥 UPDATE (UPDATED)
     @PutMapping("/{id}")
     public ActivityLog update(
             @PathVariable Long id,
-            @RequestParam String patient,
-            @RequestParam String task,
-            @RequestParam(required = false) String reason,
-            @RequestParam(required = false) String remarks
+            @RequestBody ActivityLog request
     ) {
-        return service.update(id, patient, task, reason, remarks);
+        return service.update(
+                id,
+                request.getPatientName(),
+                request.getTask(),
+                request.getMedicalReason(),
+                request.getRemarks()
+        );
     }
+
+
 }
