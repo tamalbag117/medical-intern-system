@@ -1,6 +1,6 @@
 package com.mims.medicalinternsystem.controller;
 
-import com.mims.medicalinternsystem.entity.Role;
+import com.mims.medicalinternsystem.enums.Role;
 
 import com.mims.medicalinternsystem.entity.User;
 import com.mims.medicalinternsystem.repository.UserRepository;
