@@ -18,6 +18,7 @@ public class ActivityLog {
     @Column(unique = true)
     private String patientId;
 
+    @Column(name = "intern_email")
     private String internEmail;
 
     private String patientName;
@@ -25,6 +26,7 @@ public class ActivityLog {
     private String task;
 
     // 🏥 NEW MEDICAL FIELDS
+    @Column(name = "medical_reason")
     private String medicalReason;
 
     private String remarks;
