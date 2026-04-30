@@ -10,11 +10,10 @@ FROM eclipse-temurin:17-jdk
 
 WORKDIR /app
 
-# copy exact jar
 COPY --from=builder /app/target/medical-intern-system-0.0.1-SNAPSHOT.jar app.jar
 
-# expose render default port
-EXPOSE 10000
+# optional (not required but safe)
+EXPOSE 8080
 
-# 🔥 IMPORTANT: fixed port (no env dependency)
-ENTRYPOINT ["java", "-Xmx256m", "-Dserver.port=10000", "-Dserver.address=0.0.0.0", "-jar", "app.jar"]
+# 🔥 DO NOT FIX PORT HERE
+ENTRYPOINT ["java", "-Xmx256m", "-jar", "app.jar"]
