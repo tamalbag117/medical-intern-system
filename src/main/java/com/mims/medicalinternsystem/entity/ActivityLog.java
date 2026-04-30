@@ -38,5 +38,7 @@ public class ActivityLog {
     // 🔐 WORKFLOW
     private String status; // PENDING, APPROVED, REJECTED
 
+
+    @Column(name = "reviewed_by")
     private String reviewedBy; // doctor email
 }

@@ -1,5 +1,6 @@
 package com.mims.medicalinternsystem.controller;
 
+import com.mims.medicalinternsystem.dto.ActivityRequest;
 import com.mims.medicalinternsystem.entity.ActivityLog;
 import com.mims.medicalinternsystem.service.ActivityService;
 
@@ -97,5 +98,13 @@ public class ActivityController {
         return service.pendingPaged(page, size);
     }
 
-
+    @PostMapping
+    public ActivityLog log(@RequestBody ActivityRequest req) {
+        return service.logActivity(
+                req.getPatientName(),
+                req.getTask(),
+                null,
+                null
+        );
+    }
 }
