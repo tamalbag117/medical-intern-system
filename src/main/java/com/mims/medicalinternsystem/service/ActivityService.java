@@ -13,6 +13,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
+import org.springframework.messaging.simp.SimpMessagingTemplate;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -24,6 +25,9 @@ public class ActivityService {
 
     @Autowired
     private ActivityLogRepository repo;
+
+    @Autowired
+    private SimpMessagingTemplate messagingTemplate;
 
     // ✅ CREATE
     @PreAuthorize("hasRole('INTERN')")
@@ -45,7 +49,11 @@ public class ActivityService {
         log.setTimestamp(LocalDateTime.now());
         log.setStatus("PENDING");
 
-        return repo.save(log);
+        ActivityLog saved = repo.save(log);
+
+        notifyUpdate(); // 🔥 REAL-TIME
+
+        return saved;
     }
 
     // ✅ INTERN
@@ -74,7 +82,11 @@ public class ActivityService {
         log.setReviewedBy(doctorEmail);
         log.setRemarks(remarks);
 
-        return repo.save(log);
+        ActivityLog updated = repo.save(log);
+
+        notifyUpdate(); // 🔥 REAL-TIME
+
+        return updated;
     }
 
     // ✅ DOCTOR PENDING
@@ -92,6 +104,8 @@ public class ActivityService {
                 .orElseThrow(() -> new RuntimeException("Activity not found"));
 
         repo.delete(log);
+
+        notifyUpdate(); // 🔥 REAL-TIME
     }
 
     // ✅ UPDATE
@@ -105,7 +119,11 @@ public class ActivityService {
         log.setMedicalReason(reason);
         log.setRemarks(remarks);
 
-        return repo.save(log);
+        ActivityLog updated = repo.save(log);
+
+        notifyUpdate(); // 🔥 REAL-TIME
+
+        return updated;
     }
 
     // ✅ PAGINATION (INTERN)
@@ -131,4 +149,10 @@ public class ActivityService {
         Pageable pageable = PageRequest.of(page, size);
         return repo.findByStatus("PENDING", pageable);
     }
+
+    private void notifyUpdate() {
+        messagingTemplate.convertAndSend("/topic/activity", "updated");
+    }
+
+
 }
