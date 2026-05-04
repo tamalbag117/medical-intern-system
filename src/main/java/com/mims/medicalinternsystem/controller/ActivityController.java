@@ -18,14 +18,14 @@ public class ActivityController {
     @Autowired
     private ActivityService service;
 
-    // ✅ CREATE
+    // ✅ CREATE (DTO ONLY — FIXED)
     @PostMapping
-    public ActivityLog log(@RequestBody ActivityLog request) {
+    public ActivityLog log(@RequestBody ActivityRequest req) {
         return service.logActivity(
-                request.getPatientName(),
-                request.getTask(),
-                request.getMedicalReason(),
-                request.getRemarks()
+                req.getPatientName(),
+                req.getTask(),
+                req.getMedicalReason(),
+                req.getRemarks()
         );
     }
 
@@ -64,18 +64,18 @@ public class ActivityController {
         return "Deleted successfully";
     }
 
-    // ✅ UPDATE
+    // ✅ UPDATE (STILL OK USING ENTITY OR DTO — YOUR CHOICE)
     @PutMapping("/{id}")
     public ActivityLog update(
             @PathVariable Long id,
-            @RequestBody ActivityLog request
+            @RequestBody ActivityRequest req
     ) {
         return service.update(
                 id,
-                request.getPatientName(),
-                request.getTask(),
-                request.getMedicalReason(),
-                request.getRemarks()
+                req.getPatientName(),
+                req.getTask(),
+                req.getMedicalReason(),
+                req.getRemarks()
         );
     }
 
@@ -96,15 +96,5 @@ public class ActivityController {
             @RequestParam(defaultValue = "5") int size
     ) {
         return service.pendingPaged(page, size);
-    }
-
-    @PostMapping
-    public ActivityLog log(@RequestBody ActivityRequest req) {
-        return service.logActivity(
-                req.getPatientName(),
-                req.getTask(),
-                null,
-                null
-        );
     }
 }
