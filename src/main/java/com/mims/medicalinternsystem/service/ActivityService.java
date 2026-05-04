@@ -17,6 +17,7 @@ import org.springframework.data.domain.Sort;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.UUID;
 
 @Service
 public class ActivityService {
@@ -32,12 +33,14 @@ public class ActivityService {
 
         ActivityLog log = new ActivityLog();
 
-        log.setPatientId("PAT-" + System.currentTimeMillis());
+        log.setPatientId("PAT-" + UUID.randomUUID().toString().substring(0, 8));
         log.setInternEmail(email);
         log.setPatientName(patientName);
         log.setTask(task);
-        log.setMedicalReason(reason);
-        log.setRemarks(remarks);
+
+        log.setMedicalReason(reason != null ? reason : "");
+        log.setRemarks(remarks != null ? remarks : "");
+
         log.setVisitDate(LocalDate.now());
         log.setTimestamp(LocalDateTime.now());
         log.setStatus("PENDING");
