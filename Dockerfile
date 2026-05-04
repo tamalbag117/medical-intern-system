@@ -12,6 +12,6 @@ WORKDIR /app
 
 COPY --from=builder /app/target/medical-intern-system-0.0.1-SNAPSHOT.jar app.jar
 
-EXPOSE 8080
+EXPOSE 10000
 
-ENTRYPOINT ["java", "-Xmx256m", "-jar", "app.jar"]
+ENTRYPOINT ["java", "-Xmx256m", "-Dserver.port=10000", "-Dserver.address=0.0.0.0", "-jar", "app.jar"]
