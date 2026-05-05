@@ -49,24 +49,20 @@ public class SecurityConfig {
                 // 🔥 AUTH RULES (ORDER MATTERS)
                 .authorizeHttpRequests(auth -> auth
 
-                        // ✅ PUBLIC
                         .requestMatchers(
                                 "/",
                                 "/health",
                                 "/api/auth/**",
-                                "/ws/**",          // WebSocket handshake
+                                "/ws/**",
                                 "/ws/info/**"
                         ).permitAll()
 
-                        // 🔥 AI (must be BEFORE anyRequest)
-                        .requestMatchers("/api/ai/**").authenticated()
+                        .requestMatchers("/api/ai/**").permitAll() // 🔥 FIX
 
-                        // 🔥 ROLE BASED
                         .requestMatchers("/api/admin/**").hasRole("ADMIN")
                         .requestMatchers("/api/doctor/**").hasRole("DOCTOR")
                         .requestMatchers("/api/intern/**").hasRole("INTERN")
 
-                        // 🔐 EVERYTHING ELSE
                         .anyRequest().authenticated()
                 );
 

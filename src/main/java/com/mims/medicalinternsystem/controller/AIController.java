@@ -11,6 +11,7 @@ import java.util.List;
 
 @RestController
 @RequestMapping("/api/ai")
+@CrossOrigin // optional safety (CORS fallback)
 public class AIController {
 
     @Autowired
@@ -21,15 +22,24 @@ public class AIController {
 
     @GetMapping("/insights")
     public List<AIInsight> insights() {
-
         try {
-            return aiService.generateInsights(
+            List<AIInsight> result = aiService.generateInsights(
                     activityService.allLogsForAI()
             );
+
+            // fallback safety
+            if (result == null || result.isEmpty()) {
+                return List.of(new AIInsight("INFO", "No insights available"));
+            }
+
+            return result;
+
         } catch (Exception e) {
             e.printStackTrace();
-            return List.of(new AIInsight("ERROR", "AI temporarily unavailable"));
+
+            return List.of(
+                    new AIInsight("ERROR", "AI temporarily unavailable")
+            );
         }
     }
 }
-

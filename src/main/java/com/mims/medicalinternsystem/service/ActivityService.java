@@ -179,4 +179,6 @@ public class ActivityService {
     public List<ActivityLog> allLogsForAI() {
         return repo.findAll(); // no role restriction
     }
+
+
 }
