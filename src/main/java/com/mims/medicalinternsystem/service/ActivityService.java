@@ -1,7 +1,10 @@
 package com.mims.medicalinternsystem.service;
 
 import com.mims.medicalinternsystem.entity.ActivityLog;
+import com.mims.medicalinternsystem.entity.User;
+import com.mims.medicalinternsystem.enums.Role;
 import com.mims.medicalinternsystem.repository.ActivityLogRepository;
+import com.mims.medicalinternsystem.repository.UserRepository;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -27,6 +30,12 @@ public class ActivityService {
     @Autowired
     private SimpMessagingTemplate messagingTemplate;
 
+    @Autowired
+    private NotificationService notificationService;
+
+    @Autowired
+    private UserRepository userRepository; // ✅ NEW
+
     // ✅ CREATE
     @PreAuthorize("hasRole('INTERN')")
     public ActivityLog logActivity(String patientName, String task, String reason, String remarks) {
@@ -51,7 +60,22 @@ public class ActivityService {
 
         notifyUpdate();
 
+        // ✅ 🔥 SEND TO ALL DOCTORS
+        notifyDoctors(saved);
+
         return saved;
+    }
+
+    // 🔥 NEW METHOD (IMPORTANT)
+    private void notifyDoctors(ActivityLog log) {
+        List<User> doctors = userRepository.findByRole(Role.DOCTOR);
+
+        for (User d : doctors) {
+            notificationService.send(
+                    d.getEmail(),
+                    "🩺 New activity submitted: " + log.getPatientName()
+            );
+        }
     }
 
     // ✅ INTERN
@@ -83,6 +107,12 @@ public class ActivityService {
         ActivityLog updated = repo.save(log);
 
         notifyUpdate();
+
+        // ✅ NOTIFY INTERN
+        notificationService.send(
+                log.getInternEmail(),
+                "✅ Your activity '" + log.getPatientName() + "' was " + status
+        );
 
         return updated;
     }
