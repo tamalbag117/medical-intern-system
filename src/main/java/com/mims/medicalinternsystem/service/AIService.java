@@ -22,22 +22,25 @@ public class AIService {
         int total = activities.size();
 
         long completed = activities.stream()
-                .filter(a -> "COMPLETED".equals(a.getStatus()))
+                .filter(a -> "COMPLETED".equalsIgnoreCase(a.getStatus()))
                 .count();
 
         long pending = activities.stream()
-                .filter(a -> "PENDING".equals(a.getStatus()))
+                .filter(a -> "PENDING".equalsIgnoreCase(a.getStatus()))
                 .count();
 
-        int pendingPercent = (int) ((pending * 100.0) / total);
+        int pendingPercent = total == 0 ? 0 : (int) ((pending * 100.0) / total);
 
-        // ⚠️ Pending overload
+        // 🔥 Pending overload (FIXED LOGIC)
         if (pendingPercent > 60) {
             insights.add(new AIInsight("CRITICAL",
-                    pendingPercent + "% tasks are pending — doctors overloaded"));
+                    pendingPercent + "% tasks pending — doctors overloaded"));
         } else if (pendingPercent > 40) {
             insights.add(new AIInsight("WARN",
                     "High pending tasks: " + pendingPercent + "%"));
+        } else {
+            insights.add(new AIInsight("INFO",
+                    "System running efficiently (" + completed + "/" + total + " completed)"));
         }
 
         // 📈 Today vs Yesterday
@@ -45,11 +48,11 @@ public class AIService {
         LocalDate yesterday = today.minusDays(1);
 
         long todayCount = activities.stream()
-                .filter(a -> today.equals(a.getVisitDate()))
+                .filter(a -> today.equals(getDate(a)))
                 .count();
 
         long yesterdayCount = activities.stream()
-                .filter(a -> yesterday.equals(a.getVisitDate()))
+                .filter(a -> yesterday.equals(getDate(a)))
                 .count();
 
         if (yesterdayCount > 0) {
@@ -64,13 +67,14 @@ public class AIService {
             }
         }
 
-        // 🔥 Peak day
+        // 🔥 Peak workload day
         Map<String, Integer> dayMap = new HashMap<>();
 
         for (ActivityLog a : activities) {
-            if (a.getVisitDate() == null) continue;
+            LocalDate date = getDate(a);
+            if (date == null) continue;
 
-            String day = a.getVisitDate().getDayOfWeek().toString();
+            String day = date.getDayOfWeek().toString();
             dayMap.put(day, dayMap.getOrDefault(day, 0) + 1);
         }
 
@@ -84,18 +88,22 @@ public class AIService {
         // ⚡ Productivity check
         if (completed < pending) {
             insights.add(new AIInsight("WARN",
-                    "Approval rate is slower than submissions"));
-        } else {
-            insights.add(new AIInsight("INFO",
-                    "System running efficiently"));
+                    "Approval rate slower than submissions"));
         }
 
         // 🚨 Sudden spike detection
-        if (todayCount > (yesterdayCount * 2) && yesterdayCount > 0) {
+        if (yesterdayCount > 0 && todayCount > (yesterdayCount * 2)) {
             insights.add(new AIInsight("CRITICAL",
                     "Sudden spike in workload detected today"));
         }
 
         return insights;
+    }
+
+    // 🔥 SAFE DATE HELPER
+    private LocalDate getDate(ActivityLog a) {
+        if (a.getVisitDate() != null) return a.getVisitDate();
+        if (a.getTimestamp() != null) return a.getTimestamp().toLocalDate();
+        return null;
     }
 }

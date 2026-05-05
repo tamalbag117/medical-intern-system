@@ -36,6 +36,8 @@ public class ActivityService {
     @Autowired
     private UserRepository userRepository; // ✅ NEW
 
+
+
     // ✅ CREATE
     @PreAuthorize("hasRole('INTERN')")
     public ActivityLog logActivity(String patientName, String task, String reason, String remarks) {
@@ -171,5 +173,10 @@ public class ActivityService {
     // 🔥 REAL-TIME PUSH
     private void notifyUpdate() {
         messagingTemplate.convertAndSend("/topic/activity", "updated");
+    }
+
+
+    public List<ActivityLog> allLogsForAI() {
+        return repo.findAll(); // no role restriction
     }
 }

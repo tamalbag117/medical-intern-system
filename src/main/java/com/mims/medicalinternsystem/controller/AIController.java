@@ -21,6 +21,15 @@ public class AIController {
 
     @GetMapping("/insights")
     public List<AIInsight> insights() {
-        return aiService.generateInsights(activityService.allLogs());
+
+        try {
+            return aiService.generateInsights(
+                    activityService.allLogsForAI()
+            );
+        } catch (Exception e) {
+            e.printStackTrace();
+            return List.of(new AIInsight("ERROR", "AI temporarily unavailable"));
+        }
     }
 }
+
