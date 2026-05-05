@@ -23,7 +23,7 @@ public class NotificationController {
     private NotificationService service;
 
     @GetMapping
-    public List<Notification> my() {
+    public List<Notification> get() {
         String email = SecurityContextHolder.getContext().getAuthentication().getName();
         return service.getMy(email);
     }
@@ -32,5 +32,11 @@ public class NotificationController {
     public long count() {
         String email = SecurityContextHolder.getContext().getAuthentication().getName();
         return service.countUnread(email);
+    }
+
+    @PostMapping("/read-all")
+    public void readAll() {
+        String email = SecurityContextHolder.getContext().getAuthentication().getName();
+        service.markAllRead(email);
     }
 }

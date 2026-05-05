@@ -13,8 +13,8 @@ public class ActivityRequest {
     private String medicalReason;
     private String remarks;
 
-    public String getPatientName() { return patientName; }
-    public String getTask() { return task; }
+    public String getPatientName() { return patientName != null ? patientName.trim() : null; }
+    public String getTask() { return task != null ? task.trim() : null; }
     public String getMedicalReason() { return medicalReason; }
     public String getRemarks() { return remarks; }
 
