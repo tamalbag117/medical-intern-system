@@ -9,6 +9,12 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
+
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
+
 @RestController
 @RequestMapping("/api/notify")
 public class NotificationController {
@@ -17,17 +23,14 @@ public class NotificationController {
     private NotificationService service;
 
     @GetMapping
-    public List<Notification> get() {
-        return service.getMy();
+    public List<Notification> my() {
+        String email = SecurityContextHolder.getContext().getAuthentication().getName();
+        return service.getMy(email);
     }
 
     @GetMapping("/count")
     public long count() {
-        return service.unreadCount();
-    }
-
-    @PostMapping("/read/{id}")
-    public void read(@PathVariable Long id) {
-        service.markRead(id);
+        String email = SecurityContextHolder.getContext().getAuthentication().getName();
+        return service.countUnread(email);
     }
 }

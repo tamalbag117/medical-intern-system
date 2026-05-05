@@ -35,36 +35,19 @@ public class SecurityConfig {
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
 
         http
-                // 🔥 CORS
                 .cors(cors -> cors.configurationSource(corsConfigurationSource()))
-
-                // 🔥 CSRF disabled
                 .csrf(csrf -> csrf.disable())
-
-                // 🔥 Stateless session
                 .sessionManagement(session ->
                         session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
 
-                // 🔥 Security headers
-                .headers(headers -> headers
-                        .contentSecurityPolicy(csp ->
-                                csp.policyDirectives("default-src 'self'")
-                        )
-                        .frameOptions(frame -> frame.sameOrigin())
-                        .httpStrictTransportSecurity(hsts ->
-                                hsts.includeSubDomains(true).maxAgeInSeconds(31536000)
-                        )
-                )
-
-                // 🔥 Authorization rules (FIXED)
                 .authorizeHttpRequests(auth -> auth
+
+                        // ✅ PUBLIC
                         .requestMatchers(
-                                "/",               // ✅ FIX: allow root
+                                "/",
                                 "/health",
                                 "/api/auth/**",
-                                "/v3/api-docs/**",
-                                "/swagger-ui/**",
-                                "/swagger-ui.html"
+                                "/ws/**" // 🔥 FIX WEBSOCKET
                         ).permitAll()
 
                         .requestMatchers("/api/admin/**").hasRole("ADMIN")
@@ -74,12 +57,6 @@ public class SecurityConfig {
                         .anyRequest().authenticated()
                 );
 
-        // 🔥 Rate limit
-        if (rateLimitFilter != null) {
-            http.addFilterBefore(rateLimitFilter, UsernamePasswordAuthenticationFilter.class);
-        }
-
-        // 🔥 JWT filter
         http.addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter.class);
 
         return http.build();
@@ -91,14 +68,13 @@ public class SecurityConfig {
 
         CorsConfiguration config = new CorsConfiguration();
 
-        config.setAllowedOrigins(List.of(
-                "http://localhost:3000"
+        config.setAllowedOriginPatterns(List.of(
+                "http://localhost:3000",
+                "https://medical-intern-system-one.onrender.com"
         ));
 
-        config.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
-
+        config.setAllowedMethods(List.of("*"));
         config.setAllowedHeaders(List.of("*"));
-
         config.setAllowCredentials(true);
 
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
@@ -106,6 +82,8 @@ public class SecurityConfig {
 
         return source;
     }
+
+
     @Bean
     public PasswordEncoder passwordEncoder() {
         return new BCryptPasswordEncoder();
