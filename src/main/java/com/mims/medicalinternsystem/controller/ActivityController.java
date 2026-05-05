@@ -6,9 +6,9 @@ import com.mims.medicalinternsystem.service.ActivityService;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
+import jakarta.validation.Valid;
 
 import org.springframework.data.domain.Page;
-
 import java.util.List;
 
 @RestController
@@ -18,9 +18,9 @@ public class ActivityController {
     @Autowired
     private ActivityService service;
 
-    // ✅ CREATE (DTO ONLY — FIXED)
+    // ✅ CREATE
     @PostMapping
-    public ActivityLog log(@RequestBody ActivityRequest req) {
+    public ActivityLog log(@Valid @RequestBody ActivityRequest req) {
         return service.logActivity(
                 req.getPatientName(),
                 req.getTask(),
@@ -41,7 +41,7 @@ public class ActivityController {
         return service.allLogs();
     }
 
-    // ✅ DOCTOR REVIEW
+    // ✅ REVIEW
     @PostMapping("/review")
     public ActivityLog review(
             @RequestParam Long id,
@@ -51,7 +51,7 @@ public class ActivityController {
         return service.review(id, status, remarks);
     }
 
-    // ✅ DOCTOR PENDING
+    // ✅ PENDING
     @GetMapping("/pending")
     public List<ActivityLog> pending() {
         return service.pendingLogs();
@@ -64,7 +64,7 @@ public class ActivityController {
         return "Deleted successfully";
     }
 
-    // ✅ UPDATE (STILL OK USING ENTITY OR DTO — YOUR CHOICE)
+    // ✅ UPDATE
     @PutMapping("/{id}")
     public ActivityLog update(
             @PathVariable Long id,
@@ -79,7 +79,7 @@ public class ActivityController {
         );
     }
 
-    // ✅ PAGINATION (INTERN)
+    // ✅ PAGINATION
     @GetMapping("/my/paged")
     public Page<ActivityLog> myLogsPaged(
             @RequestParam(defaultValue = "0") int page,
@@ -89,7 +89,6 @@ public class ActivityController {
         return service.myLogsPaged(page, size, search);
     }
 
-    // ✅ PAGINATION (DOCTOR)
     @GetMapping("/pending/paged")
     public Page<ActivityLog> pendingPaged(
             @RequestParam(defaultValue = "0") int page,

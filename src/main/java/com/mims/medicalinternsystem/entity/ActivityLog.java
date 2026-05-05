@@ -8,37 +8,38 @@ import java.time.LocalDateTime;
 
 @Entity
 @Data
+@Table(name = "activity_log")
 public class ActivityLog {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    // 🔥 BUSINESS ID (visible to users)
-    @Column(unique = true)
+    // 🔥 BUSINESS ID
+    @Column(name = "patient_id", unique = true, nullable = false)
     private String patientId;
 
-    @Column(name = "intern_email")
+    @Column(name = "intern_email", nullable = false)
     private String internEmail;
 
+    @Column(nullable = false)
     private String patientName;
 
+    @Column(nullable = false)
     private String task;
 
-    // 🏥 NEW MEDICAL FIELDS
     @Column(name = "medical_reason")
-    private String medicalReason;
+    private String medicalReason = "";
 
-    private String remarks;
+    private String remarks = "";
 
     private LocalDate visitDate;
 
     private LocalDateTime timestamp;
 
-    // 🔐 WORKFLOW
-    private String status; // PENDING, APPROVED, REJECTED
-
+    @Column(nullable = false)
+    private String status = "PENDING";
 
     @Column(name = "reviewed_by")
-    private String reviewedBy; // doctor email
+    private String reviewedBy;
 }

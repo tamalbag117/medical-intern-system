@@ -9,10 +9,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.context.SecurityContextHolder;
 
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.Pageable;
-import org.springframework.data.domain.PageRequest;
-import org.springframework.data.domain.Sort;
+import org.springframework.data.domain.*;
+
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 
 import java.time.LocalDate;
@@ -51,7 +49,7 @@ public class ActivityService {
 
         ActivityLog saved = repo.save(log);
 
-        notifyUpdate(); // 🔥 REAL-TIME
+        notifyUpdate();
 
         return saved;
     }
@@ -69,7 +67,7 @@ public class ActivityService {
         return repo.findAll();
     }
 
-    // ✅ DOCTOR REVIEW
+    // ✅ REVIEW
     @PreAuthorize("hasRole('DOCTOR')")
     public ActivityLog review(Long id, String status, String remarks) {
 
@@ -80,22 +78,19 @@ public class ActivityService {
 
         log.setStatus(status);
         log.setReviewedBy(doctorEmail);
-        log.setRemarks(remarks);
+        log.setRemarks(remarks != null ? remarks : "");
 
         ActivityLog updated = repo.save(log);
 
-        notifyUpdate(); // 🔥 REAL-TIME
+        notifyUpdate();
 
         return updated;
     }
 
-    // ✅ DOCTOR PENDING
+    // ✅ PENDING
     @PreAuthorize("hasRole('DOCTOR')")
     public List<ActivityLog> pendingLogs() {
-        return repo.findAll()
-                .stream()
-                .filter(log -> "PENDING".equals(log.getStatus()))
-                .toList();
+        return repo.findByStatus("PENDING", PageRequest.of(0, 100)).getContent();
     }
 
     // ✅ DELETE
@@ -104,8 +99,7 @@ public class ActivityService {
                 .orElseThrow(() -> new RuntimeException("Activity not found"));
 
         repo.delete(log);
-
-        notifyUpdate(); // 🔥 REAL-TIME
+        notifyUpdate();
     }
 
     // ✅ UPDATE
@@ -116,26 +110,22 @@ public class ActivityService {
 
         log.setPatientName(patientName);
         log.setTask(task);
-        log.setMedicalReason(reason);
-        log.setRemarks(remarks);
+        log.setMedicalReason(reason != null ? reason : "");
+        log.setRemarks(remarks != null ? remarks : "");
 
         ActivityLog updated = repo.save(log);
 
-        notifyUpdate(); // 🔥 REAL-TIME
+        notifyUpdate();
 
         return updated;
     }
 
-    // ✅ PAGINATION (INTERN)
+    // ✅ PAGINATION
     public Page<ActivityLog> myLogsPaged(int page, int size, String search) {
 
         String email = SecurityContextHolder.getContext().getAuthentication().getName();
 
-        Pageable pageable = PageRequest.of(
-                page,
-                size,
-                Sort.by("timestamp").descending()
-        );
+        Pageable pageable = PageRequest.of(page, size, Sort.by("timestamp").descending());
 
         if (search != null && !search.isEmpty()) {
             return repo.findByInternEmailAndPatientNameContainingIgnoreCase(email, search, pageable);
@@ -144,15 +134,12 @@ public class ActivityService {
         return repo.findByInternEmail(email, pageable);
     }
 
-    // ✅ PAGINATION (DOCTOR)
     public Page<ActivityLog> pendingPaged(int page, int size) {
-        Pageable pageable = PageRequest.of(page, size);
-        return repo.findByStatus("PENDING", pageable);
+        return repo.findByStatus("PENDING", PageRequest.of(page, size));
     }
 
+    // 🔥 REAL-TIME PUSH
     private void notifyUpdate() {
         messagingTemplate.convertAndSend("/topic/activity", "updated");
     }
-
-
 }
