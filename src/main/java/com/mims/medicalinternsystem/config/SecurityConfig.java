@@ -35,11 +35,18 @@ public class SecurityConfig {
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
 
         http
+                // 🔥 CORS
                 .cors(cors -> cors.configurationSource(corsConfigurationSource()))
-                .csrf(csrf -> csrf.disable())
-                .sessionManagement(session ->
-                        session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
 
+                // 🔥 Disable CSRF (API)
+                .csrf(csrf -> csrf.disable())
+
+                // 🔥 Stateless
+                .sessionManagement(session ->
+                        session.sessionCreationPolicy(SessionCreationPolicy.STATELESS)
+                )
+
+                // 🔥 AUTH RULES (ORDER MATTERS)
                 .authorizeHttpRequests(auth -> auth
 
                         // ✅ PUBLIC
@@ -47,22 +54,34 @@ public class SecurityConfig {
                                 "/",
                                 "/health",
                                 "/api/auth/**",
-                                "/ws/**" // 🔥 FIX WEBSOCKET
+                                "/ws/**",          // WebSocket handshake
+                                "/ws/info/**"
                         ).permitAll()
 
+                        // 🔥 AI (must be BEFORE anyRequest)
+                        .requestMatchers("/api/ai/**").authenticated()
+
+                        // 🔥 ROLE BASED
                         .requestMatchers("/api/admin/**").hasRole("ADMIN")
                         .requestMatchers("/api/doctor/**").hasRole("DOCTOR")
                         .requestMatchers("/api/intern/**").hasRole("INTERN")
 
+                        // 🔐 EVERYTHING ELSE
                         .anyRequest().authenticated()
                 );
 
+        // 🔥 Rate limiter (optional)
+        if (rateLimitFilter != null) {
+            http.addFilterBefore(rateLimitFilter, UsernamePasswordAuthenticationFilter.class);
+        }
+
+        // 🔥 JWT
         http.addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter.class);
 
         return http.build();
     }
 
-    // 🔥 CORS CONFIG (production-safe version)
+    // ✅ CORS CONFIG (FIXED FOR RENDER + LOCAL)
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
 
@@ -82,7 +101,6 @@ public class SecurityConfig {
 
         return source;
     }
-
 
     @Bean
     public PasswordEncoder passwordEncoder() {
