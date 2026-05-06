@@ -7,6 +7,7 @@ import com.mims.medicalinternsystem.exception.BadRequestException;
 import com.mims.medicalinternsystem.exception.UnauthorizedException;
 import com.mims.medicalinternsystem.repository.RefreshTokenRepository;
 import com.mims.medicalinternsystem.repository.UserRepository;
+import com.mims.medicalinternsystem.security.JwtUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
