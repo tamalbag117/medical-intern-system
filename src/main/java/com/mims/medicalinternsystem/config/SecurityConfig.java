@@ -57,11 +57,18 @@ public class SecurityConfig {
                                 "/ws/info/**"
                         ).permitAll()
 
-                        .requestMatchers("/api/ai/**").permitAll() // 🔥 FIX
+                        // 🔥 FIXED
+                        .requestMatchers("/api/ai/**")
+                        .hasAnyRole("ADMIN", "DOCTOR")
 
-                        .requestMatchers("/api/admin/**").hasRole("ADMIN")
-                        .requestMatchers("/api/doctor/**").hasRole("DOCTOR")
-                        .requestMatchers("/api/intern/**").hasRole("INTERN")
+                        .requestMatchers("/api/admin/**")
+                        .hasRole("ADMIN")
+
+                        .requestMatchers("/api/doctor/**")
+                        .hasRole("DOCTOR")
+
+                        .requestMatchers("/api/intern/**")
+                        .hasRole("INTERN")
 
                         .anyRequest().authenticated()
                 );

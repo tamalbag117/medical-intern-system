@@ -30,6 +30,17 @@ public class NotificationService {
         n.setCreatedAt(LocalDateTime.now());
         n.setRead(false);
 
+        Notification latest =
+                repo.findTopByEmailOrderByCreatedAtDesc(email);
+
+        if (latest != null &&
+                latest.getMessage().equals(message) &&
+                latest.getCreatedAt().isAfter(
+                        LocalDateTime.now().minusSeconds(10)
+                )) {
+            return;
+        }
+
         repo.save(n);
 
         // 🔥 Safe real-time push

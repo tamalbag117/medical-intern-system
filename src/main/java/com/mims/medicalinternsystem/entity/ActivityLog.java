@@ -42,4 +42,7 @@ public class ActivityLog {
 
     @Column(name = "reviewed_by")
     private String reviewedBy;
+
+    @Column(name = "reviewed_at")
+    private LocalDateTime reviewedAt;
 }

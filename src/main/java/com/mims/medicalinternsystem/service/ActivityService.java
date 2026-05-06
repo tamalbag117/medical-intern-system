@@ -100,24 +100,36 @@ public class ActivityService {
         ActivityLog log = repo.findById(id)
                 .orElseThrow(() -> new RuntimeException("Activity not found"));
 
-        String doctorEmail = SecurityContextHolder.getContext().getAuthentication().getName();
+        String doctorEmail = SecurityContextHolder
+                .getContext()
+                .getAuthentication()
+                .getName();
 
         log.setStatus(status);
         log.setReviewedBy(doctorEmail);
-        log.setRemarks(remarks != null ? remarks : "");
+        log.setReviewedAt(LocalDateTime.now());
+
+        if (remarks != null) {
+            log.setRemarks(remarks);
+        }
 
         ActivityLog updated = repo.save(log);
 
+        // 🔥 realtime update
         notifyUpdate();
 
-        // ✅ NOTIFY INTERN
+        // 🔥 notify intern
         notificationService.send(
                 log.getInternEmail(),
-                "✅ Your activity '" + log.getPatientName() + "' was " + status
+                "Your activity for patient "
+                        + log.getPatientName()
+                        + " was "
+                        + status
         );
 
         return updated;
     }
+
 
     // ✅ PENDING
     @PreAuthorize("hasRole('DOCTOR')")
@@ -126,11 +138,40 @@ public class ActivityService {
     }
 
     // ✅ DELETE
+    @PreAuthorize("hasAnyRole('ADMIN','INTERN')")
     public void delete(Long id) {
+
         ActivityLog log = repo.findById(id)
-                .orElseThrow(() -> new RuntimeException("Activity not found"));
+                .orElseThrow(() ->
+                        new RuntimeException("Activity not found"));
+
+        String currentUser =
+                SecurityContextHolder
+                        .getContext()
+                        .getAuthentication()
+                        .getName();
+
+        boolean isAdmin =
+                SecurityContextHolder
+                        .getContext()
+                        .getAuthentication()
+                        .getAuthorities()
+                        .stream()
+                        .anyMatch(a ->
+                                a.getAuthority()
+                                        .equals("ROLE_ADMIN"));
+
+        // 🔥 intern can only delete own
+        if (!isAdmin &&
+                !log.getInternEmail().equals(currentUser)) {
+
+            throw new RuntimeException(
+                    "Not allowed to delete this activity"
+            );
+        }
 
         repo.delete(log);
+
         notifyUpdate();
     }
 

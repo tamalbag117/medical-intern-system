@@ -4,42 +4,67 @@ import com.mims.medicalinternsystem.dto.AIInsight;
 import com.mims.medicalinternsystem.service.AIService;
 import com.mims.medicalinternsystem.service.ActivityService;
 
-import org.springframework.beans.factory.annotation.Autowired;
+import lombok.RequiredArgsConstructor;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
 @RestController
 @RequestMapping("/api/ai")
-@CrossOrigin // optional safety (CORS fallback)
+@RequiredArgsConstructor
 public class AIController {
 
-    @Autowired
-    private AIService aiService;
+    private static final Logger log =
+            LoggerFactory.getLogger(AIController.class);
 
-    @Autowired
-    private ActivityService activityService;
+    private final AIService aiService;
 
+    private final ActivityService activityService;
+
+    // ✅ AI INSIGHTS
     @GetMapping("/insights")
-    public List<AIInsight> insights() {
-        try {
-            List<AIInsight> result = aiService.generateInsights(
-                    activityService.allLogsForAI()
-            );
+    @PreAuthorize("hasAnyRole('ADMIN','DOCTOR')")
+    public ResponseEntity<List<AIInsight>> insights() {
 
-            // fallback safety
-            if (result == null || result.isEmpty()) {
-                return List.of(new AIInsight("INFO", "No insights available"));
+        try {
+
+            List<AIInsight> insights =
+                    aiService.generateInsights(
+                            activityService.allLogsForAI()
+                    );
+
+            // ✅ fallback protection
+            if (insights == null || insights.isEmpty()) {
+
+                insights = List.of(
+                        new AIInsight(
+                                "INFO",
+                                "No insights available yet"
+                        )
+                );
             }
 
-            return result;
+            return ResponseEntity.ok(insights);
 
         } catch (Exception e) {
-            e.printStackTrace();
 
-            return List.of(
-                    new AIInsight("ERROR", "AI temporarily unavailable")
-            );
+            log.error("AI insight generation failed", e);
+
+            return ResponseEntity.internalServerError()
+                    .body(
+                            List.of(
+                                    new AIInsight(
+                                            "ERROR",
+                                            "AI temporarily unavailable"
+                                    )
+                            )
+                    );
         }
     }
 }
