@@ -35,20 +35,24 @@ public class SecurityConfig {
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
 
         http
-                // 🔥 CORS
-                .cors(cors -> cors.configurationSource(corsConfigurationSource()))
 
-                // 🔥 Disable CSRF (API)
+                // ✅ CORS
+                .cors(cors ->
+                        cors.configurationSource(corsConfigurationSource())
+                )
+
+                // ✅ DISABLE CSRF
                 .csrf(csrf -> csrf.disable())
 
-                // 🔥 Stateless
+                // ✅ STATELESS JWT
                 .sessionManagement(session ->
                         session.sessionCreationPolicy(SessionCreationPolicy.STATELESS)
                 )
 
-                // 🔥 AUTH RULES (ORDER MATTERS)
+                // ✅ AUTHORIZATION
                 .authorizeHttpRequests(auth -> auth
 
+                        // 🌍 PUBLIC
                         .requestMatchers(
                                 "/",
                                 "/health",
@@ -57,34 +61,45 @@ public class SecurityConfig {
                                 "/ws/info/**"
                         ).permitAll()
 
-                        // 🔥 FIXED
+                        // 🤖 AI
                         .requestMatchers("/api/ai/**")
-                        .hasAnyRole("ADMIN", "DOCTOR")
+                        .authenticated()
 
+                        // 👑 ADMIN
                         .requestMatchers("/api/admin/**")
                         .hasRole("ADMIN")
 
+                        // 🩺 DOCTOR
                         .requestMatchers("/api/doctor/**")
                         .hasRole("DOCTOR")
 
+                        // 🎓 INTERN
                         .requestMatchers("/api/intern/**")
                         .hasRole("INTERN")
 
+                        // 🔒 EVERYTHING ELSE
                         .anyRequest().authenticated()
                 );
 
-        // 🔥 Rate limiter (optional)
+        // ✅ RATE LIMITER
         if (rateLimitFilter != null) {
-            http.addFilterBefore(rateLimitFilter, UsernamePasswordAuthenticationFilter.class);
+
+            http.addFilterBefore(
+                    rateLimitFilter,
+                    UsernamePasswordAuthenticationFilter.class
+            );
         }
 
-        // 🔥 JWT
-        http.addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter.class);
+        // ✅ JWT FILTER
+        http.addFilterBefore(
+                jwtFilter,
+                UsernamePasswordAuthenticationFilter.class
+        );
 
         return http.build();
     }
 
-    // ✅ CORS CONFIG (FIXED FOR RENDER + LOCAL)
+    // ✅ CORS CONFIG
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
 
@@ -95,11 +110,21 @@ public class SecurityConfig {
                 "https://medical-intern-system-one.onrender.com"
         ));
 
-        config.setAllowedMethods(List.of("*"));
+        config.setAllowedMethods(List.of(
+                "GET",
+                "POST",
+                "PUT",
+                "DELETE",
+                "OPTIONS"
+        ));
+
         config.setAllowedHeaders(List.of("*"));
+
         config.setAllowCredentials(true);
 
-        UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
+        UrlBasedCorsConfigurationSource source =
+                new UrlBasedCorsConfigurationSource();
+
         source.registerCorsConfiguration("/**", config);
 
         return source;

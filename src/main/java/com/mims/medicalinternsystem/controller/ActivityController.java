@@ -23,6 +23,13 @@ import java.util.List;
 @RestController
 @RequestMapping("/api/activity")
 @RequiredArgsConstructor
+@CrossOrigin(
+        origins = {
+                "http://localhost:3000",
+                "https://medical-intern-system-one.onrender.com"
+        },
+        allowCredentials = "true"
+)
 public class ActivityController {
 
     private static final Logger log =
@@ -30,12 +37,15 @@ public class ActivityController {
 
     private final ActivityService service;
 
-    // ✅ CREATE
+    // ✅ CREATE ACTIVITY
     @PostMapping
-    @PreAuthorize("hasRole('INTERN')")
+    @PreAuthorize("hasAnyRole('INTERN','DOCTOR')")
     public ResponseEntity<ActivityLog> log(
             @Valid @RequestBody ActivityRequest req
     ) {
+
+        log.info("Creating activity for patient: {}",
+                req.getPatientName());
 
         ActivityLog created =
                 service.logActivity(
@@ -48,9 +58,9 @@ public class ActivityController {
         return ResponseEntity.ok(created);
     }
 
-    // ✅ INTERN LOGS
+    // ✅ MY LOGS
     @GetMapping("/my")
-    @PreAuthorize("hasRole('INTERN')")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<List<ActivityLog>> myLogs() {
 
         return ResponseEntity.ok(
@@ -58,7 +68,7 @@ public class ActivityController {
         );
     }
 
-    // ✅ ADMIN
+    // ✅ ALL LOGS
     @GetMapping("/all")
     @PreAuthorize("hasAnyRole('ADMIN','DOCTOR')")
     public ResponseEntity<List<ActivityLog>> allLogs() {
@@ -68,40 +78,53 @@ public class ActivityController {
         );
     }
 
-    // ✅ REVIEW
+    // ✅ REVIEW / APPROVAL
     @PostMapping("/review")
-    @PreAuthorize("hasRole('DOCTOR')")
+    @PreAuthorize("hasAnyRole('ADMIN','DOCTOR')")
     public ResponseEntity<ActivityLog> review(
+
             @RequestParam Long id,
+
             @RequestParam String status,
-            @RequestParam(required = false) String remarks
+
+            @RequestParam(required = false)
+            String remarks
     ) {
 
-        // ✅ validation
+        String normalized =
+                status.toUpperCase().trim();
+
+        // ✅ SAFE VALIDATION
         if (!List.of(
                 "COMPLETED",
                 "REJECTED",
                 "PENDING"
-        ).contains(status)) {
+        ).contains(normalized)) {
 
-            throw new RuntimeException(
+            throw new IllegalArgumentException(
                     "Invalid status value"
             );
         }
 
+        log.info(
+                "Reviewing activity {} with status {}",
+                id,
+                normalized
+        );
+
         ActivityLog updated =
                 service.review(
                         id,
-                        status,
+                        normalized,
                         remarks
                 );
 
         return ResponseEntity.ok(updated);
     }
 
-    // ✅ PENDING
+    // ✅ PENDING LIST
     @GetMapping("/pending")
-    @PreAuthorize("hasRole('DOCTOR')")
+    @PreAuthorize("hasAnyRole('ADMIN','DOCTOR')")
     public ResponseEntity<List<ActivityLog>> pending() {
 
         return ResponseEntity.ok(
@@ -116,6 +139,8 @@ public class ActivityController {
             @PathVariable Long id
     ) {
 
+        log.warn("Deleting activity {}", id);
+
         service.delete(id);
 
         return ResponseEntity.ok(
@@ -125,11 +150,15 @@ public class ActivityController {
 
     // ✅ UPDATE
     @PutMapping("/{id}")
-    @PreAuthorize("hasRole('INTERN')")
+    @PreAuthorize("hasAnyRole('INTERN','DOCTOR')")
     public ResponseEntity<ActivityLog> update(
+
             @PathVariable Long id,
+
             @Valid @RequestBody ActivityRequest req
     ) {
+
+        log.info("Updating activity {}", id);
 
         ActivityLog updated =
                 service.update(
@@ -143,9 +172,9 @@ public class ActivityController {
         return ResponseEntity.ok(updated);
     }
 
-    // ✅ PAGED
+    // ✅ MY LOGS PAGED
     @GetMapping("/my/paged")
-    @PreAuthorize("hasRole('INTERN')")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<Page<ActivityLog>> myLogsPaged(
 
             @RequestParam(defaultValue = "0")
@@ -158,6 +187,14 @@ public class ActivityController {
             String search
     ) {
 
+        // ✅ SAFE LIMITS
+        page = Math.max(page, 0);
+
+        size = Math.min(
+                Math.max(size, 1),
+                50
+        );
+
         return ResponseEntity.ok(
                 service.myLogsPaged(
                         page,
@@ -167,9 +204,9 @@ public class ActivityController {
         );
     }
 
-    // ✅ DOCTOR PAGED
+    // ✅ PENDING PAGED
     @GetMapping("/pending/paged")
-    @PreAuthorize("hasRole('DOCTOR')")
+    @PreAuthorize("hasAnyRole('ADMIN','DOCTOR')")
     public ResponseEntity<Page<ActivityLog>> pendingPaged(
 
             @RequestParam(defaultValue = "0")
@@ -178,6 +215,14 @@ public class ActivityController {
             @RequestParam(defaultValue = "5")
             int size
     ) {
+
+        // ✅ SAFE LIMITS
+        page = Math.max(page, 0);
+
+        size = Math.min(
+                Math.max(size, 1),
+                50
+        );
 
         return ResponseEntity.ok(
                 service.pendingPaged(

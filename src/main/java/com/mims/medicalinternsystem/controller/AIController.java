@@ -10,7 +10,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -18,6 +17,13 @@ import java.util.List;
 @RestController
 @RequestMapping("/api/ai")
 @RequiredArgsConstructor
+@CrossOrigin(
+        origins = {
+                "http://localhost:3000",
+                "https://medical-intern-system-one.onrender.com"
+        },
+        allowCredentials = "true"
+)
 public class AIController {
 
     private static final Logger log =
@@ -29,7 +35,6 @@ public class AIController {
 
     // ✅ AI INSIGHTS
     @GetMapping("/insights")
-    @PreAuthorize("hasAnyRole('ADMIN','DOCTOR')")
     public ResponseEntity<List<AIInsight>> insights() {
 
         try {
@@ -39,7 +44,7 @@ public class AIController {
                             activityService.allLogsForAI()
                     );
 
-            // ✅ fallback protection
+            // ✅ EMPTY FALLBACK
             if (insights == null || insights.isEmpty()) {
 
                 insights = List.of(
