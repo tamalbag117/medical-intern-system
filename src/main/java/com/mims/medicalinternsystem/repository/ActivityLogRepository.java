@@ -19,4 +19,6 @@ public interface ActivityLogRepository extends JpaRepository<ActivityLog, Long> 
     );
 
     Page<ActivityLog> findByStatus(String status, Pageable pageable);
+
+
 }

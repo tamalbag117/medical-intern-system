@@ -6,15 +6,19 @@ import com.mims.medicalinternsystem.enums.Role;
 import com.mims.medicalinternsystem.repository.ActivityLogRepository;
 import com.mims.medicalinternsystem.repository.UserRepository;
 
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.stereotype.Service;
+import lombok.RequiredArgsConstructor;
 
-import org.springframework.security.access.prepost.PreAuthorize;
-import org.springframework.security.core.context.SecurityContextHolder;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import org.springframework.data.domain.*;
-
 import org.springframework.messaging.simp.SimpMessagingTemplate;
+
+import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
+
+import org.springframework.stereotype.Service;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -22,204 +26,363 @@ import java.util.List;
 import java.util.UUID;
 
 @Service
+@RequiredArgsConstructor
 public class ActivityService {
 
-    @Autowired
-    private ActivityLogRepository repo;
+    private static final Logger log =
+            LoggerFactory.getLogger(ActivityService.class);
 
-    @Autowired
-    private SimpMessagingTemplate messagingTemplate;
+    private final ActivityLogRepository repo;
 
-    @Autowired
-    private NotificationService notificationService;
+    private final UserRepository userRepository;
 
-    @Autowired
-    private UserRepository userRepository; // ✅ NEW
+    private final NotificationService notificationService;
 
-
+    private final SimpMessagingTemplate messagingTemplate;
 
     // ✅ CREATE
-    @PreAuthorize("hasRole('INTERN')")
-    public ActivityLog logActivity(String patientName, String task, String reason, String remarks) {
+    @PreAuthorize("hasAnyRole('INTERN','DOCTOR')")
+    public ActivityLog logActivity(
+            String patientName,
+            String task,
+            String reason,
+            String remarks
+    ) {
 
-        String email = SecurityContextHolder.getContext().getAuthentication().getName();
+        Authentication auth =
+                SecurityContextHolder
+                        .getContext()
+                        .getAuthentication();
 
-        ActivityLog log = new ActivityLog();
+        if (auth == null || auth.getName() == null) {
+            throw new RuntimeException("Authentication failed");
+        }
 
-        log.setPatientId("PAT-" + UUID.randomUUID().toString().substring(0, 8));
-        log.setInternEmail(email);
-        log.setPatientName(patientName);
-        log.setTask(task);
+        String email = auth.getName();
 
-        log.setMedicalReason(reason != null ? reason : "");
-        log.setRemarks(remarks != null ? remarks : "");
+        log.info("Creating activity by {}", email);
 
-        log.setVisitDate(LocalDate.now());
-        log.setTimestamp(LocalDateTime.now());
-        log.setStatus("PENDING");
+        ActivityLog logEntity = new ActivityLog();
 
-        ActivityLog saved = repo.save(log);
+        logEntity.setPatientId(
+                "PAT-" +
+                        UUID.randomUUID()
+                                .toString()
+                                .substring(0, 8)
+        );
 
+        logEntity.setInternEmail(email);
+
+        logEntity.setPatientName(
+                patientName != null ? patientName : ""
+        );
+
+        logEntity.setTask(
+                task != null ? task : ""
+        );
+
+        logEntity.setMedicalReason(
+                reason != null ? reason : ""
+        );
+
+        logEntity.setRemarks(
+                remarks != null ? remarks : ""
+        );
+
+        logEntity.setVisitDate(LocalDate.now());
+
+        logEntity.setTimestamp(LocalDateTime.now());
+
+        logEntity.setStatus("PENDING");
+
+        ActivityLog saved = repo.save(logEntity);
+
+        // ✅ realtime safe
         notifyUpdate();
 
-        // ✅ 🔥 SEND TO ALL DOCTORS
+        // ✅ doctor notifications safe
         notifyDoctors(saved);
 
         return saved;
     }
 
-    // 🔥 NEW METHOD (IMPORTANT)
+    // ✅ NOTIFY DOCTORS
     private void notifyDoctors(ActivityLog log) {
-        List<User> doctors = userRepository.findByRole(Role.DOCTOR);
 
-        for (User d : doctors) {
-            notificationService.send(
-                    d.getEmail(),
-                    "🩺 New activity submitted: " + log.getPatientName()
+        try {
+
+            List<User> doctors =
+                    userRepository.findByRole(Role.DOCTOR);
+
+            if (doctors == null || doctors.isEmpty()) {
+                return;
+            }
+
+            for (User doctor : doctors) {
+
+                if (doctor.getEmail() == null) continue;
+
+                notificationService.send(
+                        doctor.getEmail(),
+                        "🩺 New activity submitted: "
+                                + log.getPatientName()
+                );
+            }
+
+        } catch (Exception e) {
+
+            log.error(
+                    "Doctor notification failed",
+                    e
             );
         }
     }
 
-    // ✅ INTERN
-    @PreAuthorize("hasRole('INTERN')")
+    // ✅ MY LOGS
+    @PreAuthorize("isAuthenticated()")
     public List<ActivityLog> myLogs() {
-        String email = SecurityContextHolder.getContext().getAuthentication().getName();
+
+        Authentication auth =
+                SecurityContextHolder
+                        .getContext()
+                        .getAuthentication();
+
+        if (auth == null || auth.getName() == null) {
+            return List.of();
+        }
+
+        String email = auth.getName();
+
         return repo.findByInternEmail(email);
     }
 
-    // ✅ ADMIN
-    @PreAuthorize("hasRole('ADMIN')")
+    // ✅ ALL LOGS
+    @PreAuthorize("hasAnyRole('ADMIN','DOCTOR')")
     public List<ActivityLog> allLogs() {
-        return repo.findAll();
+
+        return repo.findAll(
+                Sort.by(Sort.Direction.DESC, "timestamp")
+        );
     }
 
     // ✅ REVIEW
-    @PreAuthorize("hasRole('DOCTOR')")
-    public ActivityLog review(Long id, String status, String remarks) {
+    @PreAuthorize("hasAnyRole('ADMIN','DOCTOR')")
+    public ActivityLog review(
+            Long id,
+            String status,
+            String remarks
+    ) {
 
-        ActivityLog log = repo.findById(id)
-                .orElseThrow(() -> new RuntimeException("Activity not found"));
+        ActivityLog logEntity =
+                repo.findById(id)
+                        .orElseThrow(() ->
+                                new RuntimeException(
+                                        "Activity not found"
+                                ));
 
-        String doctorEmail = SecurityContextHolder
-                .getContext()
-                .getAuthentication()
-                .getName();
+        Authentication auth =
+                SecurityContextHolder
+                        .getContext()
+                        .getAuthentication();
 
-        log.setStatus(status);
-        log.setReviewedBy(doctorEmail);
-        log.setReviewedAt(LocalDateTime.now());
+        String doctorEmail =
+                auth != null
+                        ? auth.getName()
+                        : "SYSTEM";
+
+        logEntity.setStatus(status);
+
+        logEntity.setReviewedBy(doctorEmail);
+
+        logEntity.setReviewedAt(LocalDateTime.now());
 
         if (remarks != null) {
-            log.setRemarks(remarks);
+            logEntity.setRemarks(remarks);
         }
 
-        ActivityLog updated = repo.save(log);
+        ActivityLog updated =
+                repo.save(logEntity);
 
-        // 🔥 realtime update
         notifyUpdate();
 
-        // 🔥 notify intern
-        notificationService.send(
-                log.getInternEmail(),
-                "Your activity for patient "
-                        + log.getPatientName()
-                        + " was "
-                        + status
-        );
+        try {
+
+            notificationService.send(
+                    logEntity.getInternEmail(),
+                    "Your activity for patient "
+                            + logEntity.getPatientName()
+                            + " was "
+                            + status
+            );
+
+        } catch (Exception e) {
+
+            log.error(
+                    "Intern notification failed",
+                    e
+            );
+        }
 
         return updated;
     }
 
-
     // ✅ PENDING
-    @PreAuthorize("hasRole('DOCTOR')")
+    @PreAuthorize("hasAnyRole('ADMIN','DOCTOR')")
     public List<ActivityLog> pendingLogs() {
-        return repo.findByStatus("PENDING", PageRequest.of(0, 100)).getContent();
+
+        return repo.findByStatus(
+                        "PENDING",
+                        PageRequest.of(0, 100)
+                )
+                .getContent();
     }
 
     // ✅ DELETE
     @PreAuthorize("hasAnyRole('ADMIN','INTERN')")
     public void delete(Long id) {
 
-        ActivityLog log = repo.findById(id)
-                .orElseThrow(() ->
-                        new RuntimeException("Activity not found"));
+        ActivityLog logEntity =
+                repo.findById(id)
+                        .orElseThrow(() ->
+                                new RuntimeException(
+                                        "Activity not found"
+                                ));
 
-        String currentUser =
-                SecurityContextHolder
-                        .getContext()
-                        .getAuthentication()
-                        .getName();
-
-        boolean isAdmin =
-                SecurityContextHolder
-                        .getContext()
-                        .getAuthentication()
-                        .getAuthorities()
-                        .stream()
-                        .anyMatch(a ->
-                                a.getAuthority()
-                                        .equals("ROLE_ADMIN"));
-
-        // 🔥 intern can only delete own
-        if (!isAdmin &&
-                !log.getInternEmail().equals(currentUser)) {
-
-            throw new RuntimeException(
-                    "Not allowed to delete this activity"
-            );
-        }
-
-        repo.delete(log);
+        repo.delete(logEntity);
 
         notifyUpdate();
     }
 
     // ✅ UPDATE
-    public ActivityLog update(Long id, String patientName, String task, String reason, String remarks) {
+    @PreAuthorize("hasAnyRole('INTERN','DOCTOR')")
+    public ActivityLog update(
+            Long id,
+            String patientName,
+            String task,
+            String reason,
+            String remarks
+    ) {
 
-        ActivityLog log = repo.findById(id)
-                .orElseThrow(() -> new RuntimeException("Activity not found"));
+        ActivityLog logEntity =
+                repo.findById(id)
+                        .orElseThrow(() ->
+                                new RuntimeException(
+                                        "Activity not found"
+                                ));
 
-        log.setPatientName(patientName);
-        log.setTask(task);
-        log.setMedicalReason(reason != null ? reason : "");
-        log.setRemarks(remarks != null ? remarks : "");
+        logEntity.setPatientName(patientName);
 
-        ActivityLog updated = repo.save(log);
+        logEntity.setTask(task);
+
+        logEntity.setMedicalReason(
+                reason != null ? reason : ""
+        );
+
+        logEntity.setRemarks(
+                remarks != null ? remarks : ""
+        );
+
+        ActivityLog updated =
+                repo.save(logEntity);
 
         notifyUpdate();
 
         return updated;
     }
 
-    // ✅ PAGINATION
-    public Page<ActivityLog> myLogsPaged(int page, int size, String search) {
+    // ✅ PAGED
+    public Page<ActivityLog> myLogsPaged(
+            int page,
+            int size,
+            String search
+    ) {
 
-        String email = SecurityContextHolder.getContext().getAuthentication().getName();
+        Authentication auth =
+                SecurityContextHolder
+                        .getContext()
+                        .getAuthentication();
 
-        Pageable pageable = PageRequest.of(page, size, Sort.by("timestamp").descending());
+        if (auth == null || auth.getName() == null) {
 
-        if (search != null && !search.isEmpty()) {
-            return repo.findByInternEmailAndPatientNameContainingIgnoreCase(email, search, pageable);
+            return Page.empty();
         }
 
-        return repo.findByInternEmail(email, pageable);
+        String email = auth.getName();
+
+        Pageable pageable =
+                PageRequest.of(
+                        page,
+                        size,
+                        Sort.by("timestamp").descending()
+                );
+
+        if (search != null && !search.isBlank()) {
+
+            return repo
+                    .findByInternEmailAndPatientNameContainingIgnoreCase(
+                            email,
+                            search,
+                            pageable
+                    );
+        }
+
+        return repo.findByInternEmail(
+                email,
+                pageable
+        );
     }
 
-    public Page<ActivityLog> pendingPaged(int page, int size) {
-        return repo.findByStatus("PENDING", PageRequest.of(page, size));
+    // ✅ PENDING PAGED
+    public Page<ActivityLog> pendingPaged(
+            int page,
+            int size
+    ) {
+
+        return repo.findByStatus(
+                "PENDING",
+                PageRequest.of(page, size)
+        );
     }
 
-    // 🔥 REAL-TIME PUSH
+    // ✅ REALTIME SAFE
     private void notifyUpdate() {
-        messagingTemplate.convertAndSend("/topic/activity", "updated");
+
+        try {
+
+            if (messagingTemplate != null) {
+
+                messagingTemplate.convertAndSend(
+                        "/topic/activity",
+                        "updated"
+                );
+            }
+
+        } catch (Exception e) {
+
+            log.error(
+                    "WebSocket broadcast failed",
+                    e
+            );
+        }
     }
 
-
+    // ✅ AI SAFE
     public List<ActivityLog> allLogsForAI() {
-        return repo.findAll(); // no role restriction
+
+        try {
+
+            return repo.findAll(
+                    Sort.by(Sort.Direction.DESC, "timestamp")
+            );
+
+        } catch (Exception e) {
+
+            log.error(
+                    "AI logs fetch failed",
+                    e
+            );
+
+            return List.of();
+        }
     }
-
-
 }
