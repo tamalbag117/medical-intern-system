@@ -8,13 +8,12 @@ import com.mims.medicalinternsystem.repository.UserRepository;
 
 import lombok.RequiredArgsConstructor;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import org.springframework.data.domain.*;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.access.prepost.PreAuthorize;
+
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 
@@ -22,15 +21,13 @@ import org.springframework.stereotype.Service;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+
 import java.util.List;
 import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
 public class ActivityService {
-
-    private static final Logger log =
-            LoggerFactory.getLogger(ActivityService.class);
 
     private final ActivityLogRepository repo;
 
@@ -40,8 +37,11 @@ public class ActivityService {
 
     private final SimpMessagingTemplate messagingTemplate;
 
+    // =====================================================
     // ✅ CREATE
-    @PreAuthorize("hasAnyRole('INTERN','DOCTOR')")
+    // =====================================================
+
+    @PreAuthorize("isAuthenticated()")
     public ActivityLog logActivity(
             String patientName,
             String task,
@@ -49,123 +49,72 @@ public class ActivityService {
             String remarks
     ) {
 
-        Authentication auth =
-                SecurityContextHolder
-                        .getContext()
-                        .getAuthentication();
+        String email = getCurrentUserEmail();
 
-        if (auth == null || auth.getName() == null) {
-            throw new RuntimeException("Authentication failed");
-        }
+        ActivityLog log = new ActivityLog();
 
-        String email = auth.getName();
-
-        log.info("Creating activity by {}", email);
-
-        ActivityLog logEntity = new ActivityLog();
-
-        logEntity.setPatientId(
+        log.setPatientId(
                 "PAT-" +
                         UUID.randomUUID()
                                 .toString()
                                 .substring(0, 8)
         );
 
-        logEntity.setInternEmail(email);
+        log.setInternEmail(email);
 
-        logEntity.setPatientName(
-                patientName != null ? patientName : ""
-        );
+        log.setPatientName(patientName);
 
-        logEntity.setTask(
-                task != null ? task : ""
-        );
+        log.setTask(task);
 
-        logEntity.setMedicalReason(
+        log.setMedicalReason(
                 reason != null ? reason : ""
         );
 
-        logEntity.setRemarks(
+        log.setRemarks(
                 remarks != null ? remarks : ""
         );
 
-        logEntity.setVisitDate(LocalDate.now());
+        log.setVisitDate(LocalDate.now());
 
-        logEntity.setTimestamp(LocalDateTime.now());
+        log.setTimestamp(LocalDateTime.now());
 
-        logEntity.setStatus("PENDING");
+        log.setStatus("PENDING");
 
-        ActivityLog saved = repo.save(logEntity);
+        ActivityLog saved = repo.save(log);
 
-        // ✅ realtime safe
         notifyUpdate();
 
-        // ✅ doctor notifications safe
         notifyDoctors(saved);
 
         return saved;
     }
 
-    // ✅ NOTIFY DOCTORS
-    private void notifyDoctors(ActivityLog log) {
-
-        try {
-
-            List<User> doctors =
-                    userRepository.findByRole(Role.DOCTOR);
-
-            if (doctors == null || doctors.isEmpty()) {
-                return;
-            }
-
-            for (User doctor : doctors) {
-
-                if (doctor.getEmail() == null) continue;
-
-                notificationService.send(
-                        doctor.getEmail(),
-                        "🩺 New activity submitted: "
-                                + log.getPatientName()
-                );
-            }
-
-        } catch (Exception e) {
-
-            log.error(
-                    "Doctor notification failed",
-                    e
-            );
-        }
-    }
-
+    // =====================================================
     // ✅ MY LOGS
+    // =====================================================
+
     @PreAuthorize("isAuthenticated()")
     public List<ActivityLog> myLogs() {
 
-        Authentication auth =
-                SecurityContextHolder
-                        .getContext()
-                        .getAuthentication();
-
-        if (auth == null || auth.getName() == null) {
-            return List.of();
-        }
-
-        String email = auth.getName();
+        String email = getCurrentUserEmail();
 
         return repo.findByInternEmail(email);
     }
 
-    // ✅ ALL LOGS
+    // =====================================================
+    // ✅ ADMIN / DOCTOR
+    // =====================================================
+
     @PreAuthorize("hasAnyRole('ADMIN','DOCTOR')")
     public List<ActivityLog> allLogs() {
 
-        return repo.findAll(
-                Sort.by(Sort.Direction.DESC, "timestamp")
-        );
+        return repo.findAll();
     }
 
+    // =====================================================
     // ✅ REVIEW
+    // =====================================================
+
     @PreAuthorize("hasAnyRole('ADMIN','DOCTOR')")
     public ActivityLog review(
             Long id,
@@ -173,88 +122,100 @@ public class ActivityService {
             String remarks
     ) {
 
-        ActivityLog logEntity =
-                repo.findById(id)
-                        .orElseThrow(() ->
-                                new RuntimeException(
-                                        "Activity not found"
-                                ));
+        ActivityLog log = repo.findById(id)
+                .orElseThrow(() ->
+                        new RuntimeException(
+                                "Activity not found"
+                        )
+                );
 
-        Authentication auth =
-                SecurityContextHolder
-                        .getContext()
-                        .getAuthentication();
+        String reviewer = getCurrentUserEmail();
 
-        String doctorEmail =
-                auth != null
-                        ? auth.getName()
-                        : "SYSTEM";
+        log.setStatus(status);
 
-        logEntity.setStatus(status);
+        log.setReviewedBy(reviewer);
 
-        logEntity.setReviewedBy(doctorEmail);
-
-        logEntity.setReviewedAt(LocalDateTime.now());
+        log.setReviewedAt(LocalDateTime.now());
 
         if (remarks != null) {
-            logEntity.setRemarks(remarks);
+            log.setRemarks(remarks);
         }
 
-        ActivityLog updated =
-                repo.save(logEntity);
+        ActivityLog updated = repo.save(log);
 
         notifyUpdate();
 
-        try {
-
-            notificationService.send(
-                    logEntity.getInternEmail(),
-                    "Your activity for patient "
-                            + logEntity.getPatientName()
-                            + " was "
-                            + status
-            );
-
-        } catch (Exception e) {
-
-            log.error(
-                    "Intern notification failed",
-                    e
-            );
-        }
+        notificationService.send(
+                log.getInternEmail(),
+                "Your activity for patient "
+                        + log.getPatientName()
+                        + " was "
+                        + status
+        );
 
         return updated;
     }
 
+    // =====================================================
     // ✅ PENDING
+    // =====================================================
+
     @PreAuthorize("hasAnyRole('ADMIN','DOCTOR')")
     public List<ActivityLog> pendingLogs() {
 
         return repo.findByStatus(
-                        "PENDING",
-                        PageRequest.of(0, 100)
-                )
-                .getContent();
+                "PENDING",
+                PageRequest.of(0, 100)
+        ).getContent();
     }
 
+    // =====================================================
     // ✅ DELETE
-    @PreAuthorize("hasAnyRole('ADMIN','INTERN')")
+    // =====================================================
+
+    @PreAuthorize("isAuthenticated()")
     public void delete(Long id) {
 
-        ActivityLog logEntity =
-                repo.findById(id)
-                        .orElseThrow(() ->
-                                new RuntimeException(
-                                        "Activity not found"
-                                ));
+        ActivityLog log = repo.findById(id)
+                .orElseThrow(() ->
+                        new RuntimeException(
+                                "Activity not found"
+                        )
+                );
 
-        repo.delete(logEntity);
+        String currentUser =
+                getCurrentUserEmail();
+
+        boolean isAdmin =
+                SecurityContextHolder
+                        .getContext()
+                        .getAuthentication()
+                        .getAuthorities()
+                        .stream()
+                        .anyMatch(a ->
+                                a.getAuthority()
+                                        .equals("ROLE_ADMIN")
+                        );
+
+        if (!isAdmin &&
+                !log.getInternEmail()
+                        .equals(currentUser)) {
+
+            throw new AccessDeniedException(
+                    "Not allowed"
+            );
+        }
+
+        repo.delete(log);
 
         notifyUpdate();
     }
 
+    // =====================================================
     // ✅ UPDATE
-    @PreAuthorize("hasAnyRole('INTERN','DOCTOR')")
+    // =====================================================
+
+    @PreAuthorize("isAuthenticated()")
     public ActivityLog update(
             Long id,
             String patientName,
@@ -263,60 +224,80 @@ public class ActivityService {
             String remarks
     ) {
 
-        ActivityLog logEntity =
-                repo.findById(id)
-                        .orElseThrow(() ->
-                                new RuntimeException(
-                                        "Activity not found"
-                                ));
+        ActivityLog log = repo.findById(id)
+                .orElseThrow(() ->
+                        new RuntimeException(
+                                "Activity not found"
+                        )
+                );
 
-        logEntity.setPatientName(patientName);
+        String currentUser =
+                getCurrentUserEmail();
 
-        logEntity.setTask(task);
+        boolean isOwner =
+                log.getInternEmail()
+                        .equals(currentUser);
 
-        logEntity.setMedicalReason(
+        boolean isAdmin =
+                SecurityContextHolder
+                        .getContext()
+                        .getAuthentication()
+                        .getAuthorities()
+                        .stream()
+                        .anyMatch(a ->
+                                a.getAuthority()
+                                        .equals("ROLE_ADMIN")
+                        );
+
+        if (!isOwner && !isAdmin) {
+
+            throw new AccessDeniedException(
+                    "Not allowed"
+            );
+        }
+
+        log.setPatientName(patientName);
+
+        log.setTask(task);
+
+        log.setMedicalReason(
                 reason != null ? reason : ""
         );
 
-        logEntity.setRemarks(
+        log.setRemarks(
                 remarks != null ? remarks : ""
         );
 
-        ActivityLog updated =
-                repo.save(logEntity);
+        ActivityLog updated = repo.save(log);
 
         notifyUpdate();
 
         return updated;
     }
 
-    // ✅ PAGED
+    // =====================================================
+    // ✅ PAGINATION
+    // =====================================================
+
+    @PreAuthorize("isAuthenticated()")
     public Page<ActivityLog> myLogsPaged(
             int page,
             int size,
             String search
     ) {
 
-        Authentication auth =
-                SecurityContextHolder
-                        .getContext()
-                        .getAuthentication();
-
-        if (auth == null || auth.getName() == null) {
-
-            return Page.empty();
-        }
-
-        String email = auth.getName();
+        String email = getCurrentUserEmail();
 
         Pageable pageable =
                 PageRequest.of(
                         page,
                         size,
-                        Sort.by("timestamp").descending()
+                        Sort.by("timestamp")
+                                .descending()
                 );
 
-        if (search != null && !search.isBlank()) {
+        if (search != null &&
+                !search.isBlank()) {
 
             return repo
                     .findByInternEmailAndPatientNameContainingIgnoreCase(
@@ -332,7 +313,7 @@ public class ActivityService {
         );
     }
 
-    // ✅ PENDING PAGED
+    @PreAuthorize("hasAnyRole('ADMIN','DOCTOR')")
     public Page<ActivityLog> pendingPaged(
             int page,
             int size
@@ -344,7 +325,58 @@ public class ActivityService {
         );
     }
 
-    // ✅ REALTIME SAFE
+    // =====================================================
+    // ✅ AI
+    // =====================================================
+
+    public List<ActivityLog> allLogsForAI() {
+
+        try {
+            return repo.findAll();
+        } catch (Exception e) {
+            return List.of();
+        }
+    }
+
+    // =====================================================
+    // ✅ HELPERS
+    // =====================================================
+
+    private String getCurrentUserEmail() {
+
+        Authentication auth =
+                SecurityContextHolder
+                        .getContext()
+                        .getAuthentication();
+
+        if (auth == null ||
+                auth.getName() == null) {
+
+            throw new RuntimeException(
+                    "User not authenticated"
+            );
+        }
+
+        return auth.getName();
+    }
+
+    private void notifyDoctors(ActivityLog log) {
+
+        List<User> doctors =
+                userRepository.findByRole(
+                        Role.DOCTOR
+                );
+
+        for (User d : doctors) {
+
+            notificationService.send(
+                    d.getEmail(),
+                    "🩺 New activity submitted: "
+                            + log.getPatientName()
+            );
+        }
+    }
+
     private void notifyUpdate() {
 
         try {
@@ -357,32 +389,7 @@ public class ActivityService {
                 );
             }
 
-        } catch (Exception e) {
-
-            log.error(
-                    "WebSocket broadcast failed",
-                    e
-            );
-        }
-    }
-
-    // ✅ AI SAFE
-    public List<ActivityLog> allLogsForAI() {
-
-        try {
-
-            return repo.findAll(
-                    Sort.by(Sort.Direction.DESC, "timestamp")
-            );
-
-        } catch (Exception e) {
-
-            log.error(
-                    "AI logs fetch failed",
-                    e
-            );
-
-            return List.of();
+        } catch (Exception ignored) {
         }
     }
 }
