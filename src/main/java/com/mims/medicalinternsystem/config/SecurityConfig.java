@@ -80,7 +80,7 @@ public class SecurityConfig {
 
                         // 🤖 AI
                         .requestMatchers("/api/ai/**")
-                        .hasAnyRole("ADMIN", "DOCTOR")
+                        .hasAnyRole("ADMIN", "DOCTOR", "INTERN")
 
                         // 👑 ADMIN
                         .requestMatchers("/api/admin/**")
