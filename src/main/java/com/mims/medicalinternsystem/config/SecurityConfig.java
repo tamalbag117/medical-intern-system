@@ -10,9 +10,7 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
 
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
-
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
-
 import org.springframework.security.config.http.SessionCreationPolicy;
 
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
@@ -51,50 +49,71 @@ public class SecurityConfig {
                 // ✅ DISABLE CSRF
                 .csrf(csrf -> csrf.disable())
 
-                // ✅ STATELESS JWT
+                // ✅ STATELESS SESSION
                 .sessionManagement(session ->
                         session.sessionCreationPolicy(
                                 SessionCreationPolicy.STATELESS
                         )
                 )
 
-                // ✅ AUTHORIZATION
+                // ✅ AUTHORIZATION RULES
                 .authorizeHttpRequests(auth -> auth
 
-                        // ✅ CORS PREFLIGHT
-                        .requestMatchers(HttpMethod.OPTIONS, "/**")
-                        .permitAll()
+                        // ✅ PREFLIGHT REQUESTS
+                        .requestMatchers(
+                                HttpMethod.OPTIONS,
+                                "/**"
+                        ).permitAll()
 
                         // ✅ PUBLIC ROUTES
                         .requestMatchers(
                                 "/",
                                 "/health",
                                 "/error",
+
                                 "/api/auth/**",
+
                                 "/ws/**",
                                 "/ws/info/**",
+
                                 "/v3/api-docs/**",
                                 "/swagger-ui/**",
                                 "/swagger-ui.html"
                         ).permitAll()
 
-                        // 🤖 AI
+                        // ✅ AI MODULE
                         .requestMatchers("/api/ai/**")
-                        .hasAnyRole("ADMIN", "DOCTOR", "INTERN")
+                        .hasAnyRole(
+                                "ADMIN",
+                                "DOCTOR",
+                                "INTERN"
+                        )
 
-                        // 👑 ADMIN
+                        // ✅ LEAVE MODULE
+                        .requestMatchers("/api/leave/**")
+                        .authenticated()
+
+                        // ✅ ATTENDANCE
+                        .requestMatchers("/api/attendance/**")
+                        .authenticated()
+
+                        // ✅ ACTIVITY
+                        .requestMatchers("/api/activity/**")
+                        .authenticated()
+
+                        // ✅ ADMIN
                         .requestMatchers("/api/admin/**")
                         .hasRole("ADMIN")
 
-                        // 🩺 DOCTOR
+                        // ✅ DOCTOR
                         .requestMatchers("/api/doctor/**")
                         .hasRole("DOCTOR")
 
-                        // 🎓 INTERN
+                        // ✅ INTERN
                         .requestMatchers("/api/intern/**")
                         .hasRole("INTERN")
 
-                        // 🔒 EVERYTHING ELSE
+                        // ✅ EVERYTHING ELSE
                         .anyRequest()
                         .authenticated()
                 )
@@ -108,13 +127,14 @@ public class SecurityConfig {
         return http.build();
     }
 
-    // ✅ CORS CONFIG
+    // ✅ CORS CONFIGURATION
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
 
         CorsConfiguration config =
                 new CorsConfiguration();
 
+        // ✅ FRONTEND URLS
         config.setAllowedOriginPatterns(
                 List.of(
                         "http://localhost:3000",
@@ -122,20 +142,31 @@ public class SecurityConfig {
                 )
         );
 
+        // ✅ METHODS
         config.setAllowedMethods(
                 List.of(
                         "GET",
                         "POST",
                         "PUT",
                         "DELETE",
+                        "PATCH",
                         "OPTIONS"
                 )
         );
 
+        // ✅ HEADERS
         config.setAllowedHeaders(
                 List.of("*")
         );
 
+        // ✅ EXPOSE JWT
+        config.setExposedHeaders(
+                List.of(
+                        "Authorization"
+                )
+        );
+
+        // ✅ ALLOW COOKIES
         config.setAllowCredentials(true);
 
         UrlBasedCorsConfigurationSource source =

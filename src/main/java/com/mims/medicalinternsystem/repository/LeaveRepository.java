@@ -6,14 +6,14 @@ import org.springframework.data.jpa.repository.JpaRepository;
 
 import java.util.List;
 
-public interface LeaveRepository
+public interface LeaveRequestRepository
         extends JpaRepository<LeaveRequest, Long> {
 
-    List<LeaveRequest> findByEmailOrderByAppliedAtDesc(
+    List<LeaveRequest>
+    findByEmailOrderByAppliedAtDesc(
             String email
     );
 
-    List<LeaveRequest> findByStatusOrderByAppliedAtDesc(
-            String status
-    );
+    List<LeaveRequest>
+    findAllByOrderByAppliedAtDesc();
 }

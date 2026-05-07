@@ -19,4 +19,11 @@ public interface AttendanceRepository
     List<Attendance> findByInternEmailOrderByDateDesc(
             String internEmail
     );
+
+    // ✅ ANALYTICS
+
+    long countByInternEmailAndStatus(
+            String internEmail,
+            String status
+    );
 }

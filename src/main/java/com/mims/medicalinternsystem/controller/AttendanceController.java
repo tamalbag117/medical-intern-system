@@ -2,6 +2,7 @@ package com.mims.medicalinternsystem.controller;
 
 import com.mims.medicalinternsystem.entity.Attendance;
 import com.mims.medicalinternsystem.service.AttendanceService;
+import com.mims.medicalinternsystem.dto.AttendanceAnalyticsDTO;
 
 import lombok.RequiredArgsConstructor;
 
@@ -57,6 +58,16 @@ public class AttendanceController {
 
         return ResponseEntity.ok(
                 service.allAttendance()
+        );
+    }
+
+    // ✅ ANALYTICS
+    @GetMapping("/analytics")
+    @PreAuthorize("hasRole('INTERN')")
+    public ResponseEntity<AttendanceAnalyticsDTO> analytics() {
+
+        return ResponseEntity.ok(
+                service.analytics()
         );
     }
 }

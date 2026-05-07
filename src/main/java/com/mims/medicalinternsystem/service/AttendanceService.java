@@ -10,6 +10,7 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 
 import org.springframework.stereotype.Service;
+import com.mims.medicalinternsystem.dto.AttendanceAnalyticsDTO;
 
 import java.time.Duration;
 import java.time.LocalDate;
@@ -46,7 +47,11 @@ public class AttendanceService {
                         .internEmail(email)
                         .date(today)
                         .checkInTime(LocalDateTime.now())
-                        .status("PRESENT")
+                        .status(
+                                LocalDateTime.now().getHour() >= 9
+                                        ? "LATE"
+                                        : "PRESENT"
+                        )
                         .workedMinutes(0L)
                         .build();
 
@@ -115,5 +120,54 @@ public class AttendanceService {
                         .getAuthentication();
 
         return auth.getName();
+    }
+
+    // ✅ ANALYTICS
+    public AttendanceAnalyticsDTO analytics() {
+
+        String email = currentUser();
+
+        List<Attendance> list =
+                repository.findByInternEmailOrderByDateDesc(email);
+
+        long present =
+                repository.countByInternEmailAndStatus(
+                        email,
+                        "PRESENT"
+                );
+
+        long late =
+                repository.countByInternEmailAndStatus(
+                        email,
+                        "LATE"
+                );
+
+        long absent =
+                repository.countByInternEmailAndStatus(
+                        email,
+                        "ABSENT"
+                );
+
+        long totalMinutes =
+                list.stream()
+                        .mapToLong(a ->
+                                a.getWorkedMinutes() == null
+                                        ? 0
+                                        : a.getWorkedMinutes()
+                        )
+                        .sum();
+
+        double avgHours =
+                list.isEmpty()
+                        ? 0
+                        : (totalMinutes / 60.0) / list.size();
+
+        return new AttendanceAnalyticsDTO(
+                present,
+                late,
+                absent,
+                totalMinutes,
+                avgHours
+        );
     }
 }

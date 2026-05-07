@@ -1,127 +1,146 @@
 package com.mims.medicalinternsystem.service;
 
+import com.mims.medicalinternsystem.dto.LeaveRequestDTO;
 import com.mims.medicalinternsystem.entity.LeaveRequest;
-import com.mims.medicalinternsystem.repository.LeaveRepository;
+import com.mims.medicalinternsystem.repository.LeaveRequestRepository;
 
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.messaging.simp.SimpMessagingTemplate;
+import lombok.RequiredArgsConstructor;
+
+import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
+
 import org.springframework.stereotype.Service;
 
-import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
-import java.util.Map;
 
 @Service
+@RequiredArgsConstructor
 public class LeaveService {
 
-    @Autowired
-    private LeaveRepository repo;
+    private final LeaveRequestRepository repository;
 
-    @Autowired
-    private NotificationService notificationService;
-
-    @Autowired
-    private SimpMessagingTemplate messagingTemplate;
-
-    // ✅ APPLY
+    // ✅ APPLY LEAVE
     public LeaveRequest apply(
-            String reason,
-            LocalDate from,
-            LocalDate to
+            LeaveRequestDTO dto
     ) {
 
-        String email = SecurityContextHolder
-                .getContext()
-                .getAuthentication()
-                .getName();
+        LeaveRequest leave =
+                new LeaveRequest();
 
-        LeaveRequest leave = new LeaveRequest();
+        leave.setEmail(currentUser());
 
-        leave.setEmail(email);
-        leave.setReason(reason);
+        leave.setReason(
+                dto.getReason()
+        );
 
-        leave.setFromDate(from);
-        leave.setToDate(to);
+        leave.setFromDate(
+                dto.getFromDate()
+        );
+
+        leave.setToDate(
+                dto.getToDate()
+        );
+
+        leave.setRemarks(
+                dto.getRemarks()
+        );
 
         leave.setStatus("PENDING");
 
-        leave.setAppliedAt(LocalDateTime.now());
-
-        LeaveRequest saved = repo.save(leave);
-
-        notificationService.send(
-                "doctor@email.com",
-                "New leave request submitted"
+        leave.setAppliedAt(
+                LocalDateTime.now()
         );
 
-        messagingTemplate.convertAndSend(
-                "/topic/activity",
-                Map.of(
-                        "type", "ACTIVITY_UPDATED",
-                        "timestamp", System.currentTimeMillis()
-                )
-        );
-
-        return saved;
+        return repository.save(leave);
     }
 
     // ✅ MY LEAVES
     public List<LeaveRequest> myLeaves() {
 
-        String email = SecurityContextHolder
-                .getContext()
-                .getAuthentication()
-                .getName();
-
-        return repo.findByEmailOrderByAppliedAtDesc(email);
+        return repository
+                .findByEmailOrderByAppliedAtDesc(
+                        currentUser()
+                );
     }
 
-    // ✅ PENDING
-    public List<LeaveRequest> pendingLeaves() {
-        return repo.findByStatusOrderByAppliedAtDesc(
-                "PENDING"
-        );
+    // ✅ ALL LEAVES
+    public List<LeaveRequest> allLeaves() {
+
+        return repository
+                .findAllByOrderByAppliedAtDesc();
     }
 
-    // ✅ REVIEW
-    public LeaveRequest review(
+    // ✅ APPROVE
+    public LeaveRequest approve(
             Long id,
-            String status,
             String remarks
     ) {
 
-        LeaveRequest leave = repo.findById(id)
-                .orElseThrow(() ->
-                        new RuntimeException("Leave not found")
-                );
+        LeaveRequest leave =
+                repository.findById(id)
+                        .orElseThrow(() ->
+                                new RuntimeException(
+                                        "Leave not found"
+                                )
+                        );
 
-        String doctor = SecurityContextHolder
-                .getContext()
-                .getAuthentication()
-                .getName();
+        leave.setStatus("APPROVED");
 
-        leave.setStatus(status);
-
-        leave.setReviewedBy(doctor);
-
-        leave.setReviewedAt(LocalDateTime.now());
-
-        leave.setRemarks(remarks);
-
-        LeaveRequest updated = repo.save(leave);
-
-        notificationService.send(
-                leave.getEmail(),
-                "Your leave request was " + status
+        leave.setReviewedBy(
+                currentUser()
         );
 
-        messagingTemplate.convertAndSend(
-                "/topic/leave",
-                "updated"
+        leave.setReviewedAt(
+                LocalDateTime.now()
         );
 
-        return updated;
+        leave.setRemarks(
+                remarks
+        );
+
+        return repository.save(leave);
+    }
+
+    // ✅ REJECT
+    public LeaveRequest reject(
+            Long id,
+            String remarks
+    ) {
+
+        LeaveRequest leave =
+                repository.findById(id)
+                        .orElseThrow(() ->
+                                new RuntimeException(
+                                        "Leave not found"
+                                )
+                        );
+
+        leave.setStatus("REJECTED");
+
+        leave.setReviewedBy(
+                currentUser()
+        );
+
+        leave.setReviewedAt(
+                LocalDateTime.now()
+        );
+
+        leave.setRemarks(
+                remarks
+        );
+
+        return repository.save(leave);
+    }
+
+    // ✅ CURRENT USER
+    private String currentUser() {
+
+        Authentication auth =
+                SecurityContextHolder
+                        .getContext()
+                        .getAuthentication();
+
+        return auth.getName();
     }
 }

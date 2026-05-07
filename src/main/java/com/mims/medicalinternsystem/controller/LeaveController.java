@@ -1,60 +1,93 @@
 package com.mims.medicalinternsystem.controller;
 
+import com.mims.medicalinternsystem.dto.LeaveRequestDTO;
 import com.mims.medicalinternsystem.entity.LeaveRequest;
 import com.mims.medicalinternsystem.service.LeaveService;
 
-import org.springframework.beans.factory.annotation.Autowired;
+import jakarta.validation.Valid;
+
+import lombok.RequiredArgsConstructor;
+
+import org.springframework.http.ResponseEntity;
+
+import org.springframework.security.access.prepost.PreAuthorize;
+
 import org.springframework.web.bind.annotation.*;
 
-import java.time.LocalDate;
 import java.util.List;
 
 @RestController
 @RequestMapping("/api/leave")
+@RequiredArgsConstructor
 public class LeaveController {
 
-    @Autowired
-    private LeaveService service;
+    private final LeaveService service;
 
-    // ✅ APPLY
+    // ✅ APPLY LEAVE
     @PostMapping
-    public LeaveRequest apply(
-            @RequestParam String reason,
-            @RequestParam LocalDate fromDate,
-            @RequestParam LocalDate toDate
+    @PreAuthorize("hasRole('INTERN')")
+    public ResponseEntity<LeaveRequest> apply(
+            @Valid
+            @RequestBody
+            LeaveRequestDTO dto
     ) {
 
-        return service.apply(
-                reason,
-                fromDate,
-                toDate
+        return ResponseEntity.ok(
+                service.apply(dto)
         );
     }
 
-    // ✅ MY
+    // ✅ MY LEAVES
     @GetMapping("/my")
-    public List<LeaveRequest> myLeaves() {
-        return service.myLeaves();
+    @PreAuthorize("hasRole('INTERN')")
+    public ResponseEntity<List<LeaveRequest>> my() {
+
+        return ResponseEntity.ok(
+                service.myLeaves()
+        );
     }
 
-    // ✅ PENDING
-    @GetMapping("/pending")
-    public List<LeaveRequest> pending() {
-        return service.pendingLeaves();
+    // ✅ ALL LEAVES
+    @GetMapping("/all")
+    @PreAuthorize("hasAnyRole('ADMIN','DOCTOR')")
+    public ResponseEntity<List<LeaveRequest>> all() {
+
+        return ResponseEntity.ok(
+                service.allLeaves()
+        );
     }
 
-    // ✅ REVIEW
-    @PostMapping("/review")
-    public LeaveRequest review(
-            @RequestParam Long id,
-            @RequestParam String status,
-            @RequestParam(required = false) String remarks
+    // ✅ APPROVE
+    @PutMapping("/approve/{id}")
+    @PreAuthorize("hasAnyRole('ADMIN','DOCTOR')")
+    public ResponseEntity<LeaveRequest> approve(
+            @PathVariable Long id,
+            @RequestParam(required = false)
+            String remarks
     ) {
 
-        return service.review(
-                id,
-                status,
-                remarks
+        return ResponseEntity.ok(
+                service.approve(
+                        id,
+                        remarks
+                )
+        );
+    }
+
+    // ✅ REJECT
+    @PutMapping("/reject/{id}")
+    @PreAuthorize("hasAnyRole('ADMIN','DOCTOR')")
+    public ResponseEntity<LeaveRequest> reject(
+            @PathVariable Long id,
+            @RequestParam(required = false)
+            String remarks
+    ) {
+
+        return ResponseEntity.ok(
+                service.reject(
+                        id,
+                        remarks
+                )
         );
     }
 }
