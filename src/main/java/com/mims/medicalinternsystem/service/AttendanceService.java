@@ -54,6 +54,7 @@ public class AttendanceService {
     }
 
     // ✅ CHECK OUT
+    // ✅ CHECK OUT
     public Attendance checkOut() {
 
         String email = currentUser();
@@ -63,13 +64,15 @@ public class AttendanceService {
                         email,
                         LocalDate.now()
                 ).orElseThrow(() ->
-                        new RuntimeException(
+                        new IllegalStateException(
                                 "Please check in first"
                         )
                 );
 
+        // ✅ ALREADY CHECKED OUT
         if (attendance.getCheckOutTime() != null) {
-            throw new RuntimeException(
+
+            throw new IllegalStateException(
                     "Already checked out"
             );
         }
