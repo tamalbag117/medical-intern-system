@@ -3,111 +3,115 @@ package com.mims.medicalinternsystem.service;
 import com.mims.medicalinternsystem.entity.Attendance;
 import com.mims.medicalinternsystem.repository.AttendanceRepository;
 
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.messaging.simp.SimpMessagingTemplate;
+import lombok.RequiredArgsConstructor;
+
+import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
+
 import org.springframework.stereotype.Service;
 
 import java.time.Duration;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.LocalTime;
 import java.util.List;
 
 @Service
+@RequiredArgsConstructor
 public class AttendanceService {
 
-    @Autowired
-    private AttendanceRepository repo;
-
-    @Autowired
-    private SimpMessagingTemplate messagingTemplate;
+    private final AttendanceRepository repository;
 
     // ✅ CHECK IN
     public Attendance checkIn() {
 
-        String email = SecurityContextHolder
-                .getContext()
-                .getAuthentication()
-                .getName();
+        String email = getCurrentUser();
 
         LocalDate today = LocalDate.now();
 
-        if (repo.findByEmailAndDate(email, today).isPresent()) {
-            throw new RuntimeException(
-                    "Already checked in today"
-            );
-        }
+        repository.findByInternEmailAndDate(email, today)
+                .ifPresent(a -> {
+                    throw new RuntimeException(
+                            "Already checked in today"
+                    );
+                });
 
-        Attendance a = new Attendance();
+        LocalDateTime now = LocalDateTime.now();
 
-        a.setEmail(email);
-        a.setDate(today);
-        a.setCheckIn(LocalDateTime.now());
+        String status =
+                now.toLocalTime().isAfter(LocalTime.of(9, 30))
+                        ? "LATE"
+                        : "PRESENT";
 
-        // 🔥 late after 10 AM
-        if (LocalDateTime.now().getHour() >= 10) {
-            a.setStatus("LATE");
-        } else {
-            a.setStatus("PRESENT");
-        }
+        Attendance attendance =
+                Attendance.builder()
+                        .internEmail(email)
+                        .date(today)
+                        .checkInTime(now)
+                        .status(status)
+                        .workedMinutes(0L)
+                        .build();
 
-        Attendance saved = repo.save(a);
-
-        messagingTemplate.convertAndSend(
-                "/topic/attendance",
-                "updated"
-        );
-
-        return saved;
+        return repository.save(attendance);
     }
 
     // ✅ CHECK OUT
     public Attendance checkOut() {
 
-        String email = SecurityContextHolder
-                .getContext()
-                .getAuthentication()
-                .getName();
+        String email = getCurrentUser();
 
-        Attendance a = repo.findByEmailAndDate(
-                email,
-                LocalDate.now()
-        ).orElseThrow(() ->
-                new RuntimeException("No check-in found")
-        );
+        Attendance attendance =
+                repository.findByInternEmailAndDate(
+                        email,
+                        LocalDate.now()
+                ).orElseThrow(() ->
+                        new RuntimeException(
+                                "Check in first"
+                        )
+                );
 
-        a.setCheckOut(LocalDateTime.now());
+        if (attendance.getCheckOutTime() != null) {
+            throw new RuntimeException(
+                    "Already checked out"
+            );
+        }
 
-        double hours = Duration.between(
-                a.getCheckIn(),
-                a.getCheckOut()
-        ).toMinutes() / 60.0;
+        LocalDateTime out = LocalDateTime.now();
 
-        a.setTotalHours(hours);
+        attendance.setCheckOutTime(out);
 
-        Attendance updated = repo.save(a);
+        long minutes =
+                Duration.between(
+                        attendance.getCheckInTime(),
+                        out
+                ).toMinutes();
 
-        messagingTemplate.convertAndSend(
-                "/topic/attendance",
-                "updated"
-        );
+        attendance.setWorkedMinutes(minutes);
 
-        return updated;
+        return repository.save(attendance);
     }
 
     // ✅ MY HISTORY
     public List<Attendance> myAttendance() {
 
-        String email = SecurityContextHolder
-                .getContext()
-                .getAuthentication()
-                .getName();
-
-        return repo.findByEmailOrderByDateDesc(email);
+        return repository.findByInternEmailOrderByDateDesc(
+                getCurrentUser()
+        );
     }
 
-    // ✅ TODAY ALL
-    public List<Attendance> todayAttendance() {
-        return repo.findByDate(LocalDate.now());
+    // ✅ ALL
+    public List<Attendance> allAttendance() {
+        return repository.findAll();
+    }
+
+    // ✅ CURRENT USER
+    private String getCurrentUser() {
+
+        Authentication auth =
+                SecurityContextHolder
+                        .getContext()
+                        .getAuthentication();
+
+        return auth.getName();
     }
 }

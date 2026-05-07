@@ -1,32 +1,36 @@
 package com.mims.medicalinternsystem.entity;
 
 import jakarta.persistence.*;
-import lombok.Data;
 
+import lombok.*;
+
+import java.time.Duration;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 
 @Entity
-@Data
 @Table(name = "attendance")
+@Getter
+@Setter
+@NoArgsConstructor
+@AllArgsConstructor
+@Builder
 public class Attendance {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    private String email;
+    private String internEmail;
 
     private LocalDate date;
 
-    @Column(name = "check_in")
-    private LocalDateTime checkIn;
+    private LocalDateTime checkInTime;
 
-    @Column(name = "check_out")
-    private LocalDateTime checkOut;
+    private LocalDateTime checkOutTime;
 
-    @Column(name = "total_hours")
-    private Double totalHours = 0.0;
+    private String status;
+    // PRESENT / LATE / ABSENT
 
-    private String status; // PRESENT / ABSENT / LATE
+    private Long workedMinutes;
 }
