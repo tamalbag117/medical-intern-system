@@ -1,5 +1,6 @@
 package com.mims.medicalinternsystem.service;
 
+
 import com.mims.medicalinternsystem.entity.Attendance;
 import com.mims.medicalinternsystem.repository.AttendanceRepository;
 
@@ -13,7 +14,6 @@ import org.springframework.stereotype.Service;
 import java.time.Duration;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
-import java.time.LocalTime;
 import java.util.List;
 
 @Service
@@ -25,30 +25,25 @@ public class AttendanceService {
     // ✅ CHECK IN
     public Attendance checkIn() {
 
-        String email = getCurrentUser();
+        String email = currentUser();
 
         LocalDate today = LocalDate.now();
 
-        repository.findByInternEmailAndDate(email, today)
-                .ifPresent(a -> {
-                    throw new RuntimeException(
-                            "Already checked in today"
-                    );
-                });
-
-        LocalDateTime now = LocalDateTime.now();
-
-        String status =
-                now.toLocalTime().isAfter(LocalTime.of(9, 30))
-                        ? "LATE"
-                        : "PRESENT";
+        repository.findByInternEmailAndDate(
+                email,
+                today
+        ).ifPresent(a -> {
+            throw new RuntimeException(
+                    "Already checked in today"
+            );
+        });
 
         Attendance attendance =
                 Attendance.builder()
                         .internEmail(email)
                         .date(today)
-                        .checkInTime(now)
-                        .status(status)
+                        .checkInTime(LocalDateTime.now())
+                        .status("PRESENT")
                         .workedMinutes(0L)
                         .build();
 
@@ -58,7 +53,7 @@ public class AttendanceService {
     // ✅ CHECK OUT
     public Attendance checkOut() {
 
-        String email = getCurrentUser();
+        String email = currentUser();
 
         Attendance attendance =
                 repository.findByInternEmailAndDate(
@@ -66,7 +61,7 @@ public class AttendanceService {
                         LocalDate.now()
                 ).orElseThrow(() ->
                         new RuntimeException(
-                                "Check in first"
+                                "Please check in first"
                         )
                 );
 
@@ -91,12 +86,13 @@ public class AttendanceService {
         return repository.save(attendance);
     }
 
-    // ✅ MY HISTORY
+    // ✅ MY ATTENDANCE
     public List<Attendance> myAttendance() {
 
-        return repository.findByInternEmailOrderByDateDesc(
-                getCurrentUser()
-        );
+        return repository
+                .findByInternEmailOrderByDateDesc(
+                        currentUser()
+                );
     }
 
     // ✅ ALL
@@ -104,8 +100,8 @@ public class AttendanceService {
         return repository.findAll();
     }
 
-    // ✅ CURRENT USER
-    private String getCurrentUser() {
+    // ✅ USER
+    private String currentUser() {
 
         Authentication auth =
                 SecurityContextHolder

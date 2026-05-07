@@ -12,11 +12,11 @@ public interface AttendanceRepository
         extends JpaRepository<Attendance, Long> {
 
     Optional<Attendance> findByInternEmailAndDate(
-            String email,
+            String internEmail,
             LocalDate date
     );
 
     List<Attendance> findByInternEmailOrderByDateDesc(
-            String email
+            String internEmail
     );
 }

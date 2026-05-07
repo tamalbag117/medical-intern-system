@@ -50,7 +50,7 @@ public class AttendanceController {
         );
     }
 
-    // ✅ ADMIN / DOCTOR
+    // ✅ ADMIN/DOCTOR
     @GetMapping("/all")
     @PreAuthorize("hasAnyRole('ADMIN','DOCTOR')")
     public ResponseEntity<List<Attendance>> all() {
