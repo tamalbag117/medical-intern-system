@@ -7,6 +7,7 @@ import com.mims.medicalinternsystem.exception.BadRequestException;
 import com.mims.medicalinternsystem.exception.UnauthorizedException;
 import com.mims.medicalinternsystem.repository.RefreshTokenRepository;
 import com.mims.medicalinternsystem.repository.UserRepository;
+import com.mims.medicalinternsystem.security.CustomUserDetailsService;
 import com.mims.medicalinternsystem.security.JwtUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -14,6 +15,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.security.core.userdetails.UserDetails;
 
 
 import java.time.LocalDateTime;
@@ -45,6 +47,9 @@ public class AuthService {
 
     @Value("${captcha.enabled:false}")
     private boolean captchaEnabled;
+
+    @Autowired
+    private CustomUserDetailsService customUserDetailsService;
 
 
 
@@ -103,7 +108,12 @@ public class AuthService {
 
         auditService.log("LOGIN", user.getEmail());
 
-        String accessToken = jwtUtil.generateToken(user.getEmail());
+        UserDetails userDetails =
+                customUserDetailsService
+                        .loadUserByUsername(user.getEmail());
+
+        String accessToken =
+                jwtUtil.generateToken(userDetails);
         String refreshToken = UUID.randomUUID().toString();
 
         RefreshToken token = new RefreshToken();
@@ -138,7 +148,11 @@ public class AuthService {
 
         log.info("Token refreshed for {}", token.getEmail());
 
-        return jwtUtil.generateToken(token.getEmail());
+        UserDetails userDetails =
+                customUserDetailsService
+                        .loadUserByUsername(token.getEmail());
+
+        return jwtUtil.generateToken(userDetails);
     }
 
     // 🚪 LOGOUT

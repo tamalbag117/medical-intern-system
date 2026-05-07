@@ -42,13 +42,12 @@ public class JwtFilter extends OncePerRequestFilter {
 
         // ✅ PUBLIC ROUTES
         if (
-                path.startsWith("/v3/api-docs") ||
-                        path.startsWith("/swagger-ui") ||
-                        path.startsWith("/swagger-ui.html") ||
+                path.startsWith("/api/auth") ||
+                        path.startsWith("/ws") ||
                         path.startsWith("/health") ||
-                        path.startsWith("/api/auth") ||
                         path.startsWith("/error") ||
-                        path.startsWith("/ws")
+                        path.startsWith("/swagger-ui") ||
+                        path.startsWith("/v3/api-docs")
         ) {
 
             filterChain.doFilter(request, response);
@@ -88,7 +87,7 @@ public class JwtFilter extends OncePerRequestFilter {
                         userDetailsService
                                 .loadUserByUsername(email);
 
-                // ✅ VALID TOKEN
+                // ✅ VALIDATE
                 if (
                         jwtUtil.validateToken(
                                 token,
