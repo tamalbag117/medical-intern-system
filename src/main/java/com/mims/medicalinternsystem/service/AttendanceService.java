@@ -29,14 +29,17 @@ public class AttendanceService {
 
         LocalDate today = LocalDate.now();
 
-        repository.findByInternEmailAndDate(
-                email,
-                today
-        ).ifPresent(a -> {
-            throw new RuntimeException(
+        if (
+                repository.findByInternEmailAndDate(
+                        email,
+                        today
+                ).isPresent()
+        ) {
+
+            throw new IllegalStateException(
                     "Already checked in today"
             );
-        });
+        }
 
         Attendance attendance =
                 Attendance.builder()
