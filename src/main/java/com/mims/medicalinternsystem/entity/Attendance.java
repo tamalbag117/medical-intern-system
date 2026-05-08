@@ -35,4 +35,7 @@ public class Attendance {
 
     @Column(name = "worked_minutes")
     private Long workedMinutes;
+
+    @Column(name = "auto_marked")
+    private boolean autoMarked;
 }

@@ -4,6 +4,7 @@ import com.mims.medicalinternsystem.entity.LeaveRequest;
 
 import org.springframework.data.jpa.repository.JpaRepository;
 
+import java.time.LocalDate;
 import java.util.List;
 
 public interface LeaveRequestRepository
@@ -16,4 +17,11 @@ public interface LeaveRequestRepository
 
     List<LeaveRequest>
     findAllByOrderByAppliedAtDesc();
+
+    boolean existsByEmailAndStatusAndFromDateLessThanEqualAndToDateGreaterThanEqual(
+            String email,
+            String status,
+            LocalDate today1,
+            LocalDate today2
+    );
 }
