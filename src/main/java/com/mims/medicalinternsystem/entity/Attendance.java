@@ -96,4 +96,11 @@ public class Attendance {
 
     @Column(name = "distance_from_hospital")
     private Double distanceFromHospital;
+
+    /* =========================================================
+       ✅ QR     CODE
+    ========================================================= */
+
+    @Column(name = "qr_verified")
+    private Boolean qrVerified;
 }
