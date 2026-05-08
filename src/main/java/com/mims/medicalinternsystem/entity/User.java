@@ -1,6 +1,7 @@
 package com.mims.medicalinternsystem.entity;
 
 import com.mims.medicalinternsystem.enums.Role;
+import com.mims.medicalinternsystem.enums.ShiftType;
 import jakarta.persistence.*;
 import lombok.*;
 
@@ -32,4 +33,8 @@ public class User {
 
     @Column(length = 10)
     private String phone;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "shift_type")
+    private ShiftType shiftType;
 }

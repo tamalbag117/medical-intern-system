@@ -1,8 +1,14 @@
 package com.mims.medicalinternsystem.service;
 
 import com.mims.medicalinternsystem.dto.AttendanceAnalyticsDTO;
+
 import com.mims.medicalinternsystem.entity.Attendance;
+import com.mims.medicalinternsystem.entity.User;
+
+import com.mims.medicalinternsystem.enums.ShiftType;
+
 import com.mims.medicalinternsystem.repository.AttendanceRepository;
+import com.mims.medicalinternsystem.repository.UserRepository;
 
 import lombok.RequiredArgsConstructor;
 
@@ -22,6 +28,10 @@ import java.util.List;
 public class AttendanceService {
 
     private final AttendanceRepository repository;
+
+    private final UserRepository userRepository;
+
+    private final ShiftService shiftService;
 
     // ✅ CHECK IN
     public Attendance checkIn() {
@@ -43,42 +53,78 @@ public class AttendanceService {
             );
         }
 
-        LocalDateTime now = LocalDateTime.now();
+        // ✅ USER
+        User user =
+                userRepository
+                        .findByEmail(email)
+                        .orElseThrow(() ->
 
-        // ✅ OFFICE START TIME
-        LocalDateTime officeTime =
+                                new IllegalStateException(
+                                        "User not found"
+                                )
+                        );
+
+        // ✅ DEFAULT SHIFT
+        ShiftType shift =
+                user.getShiftType() == null
+                        ? ShiftType.MORNING
+                        : user.getShiftType();
+
+        LocalDateTime now =
+                LocalDateTime.now();
+
+        // ✅ SHIFT START
+        LocalDateTime shiftStart =
                 LocalDate.now()
-                        .atTime(9, 0);
+                        .atTime(
+                                shiftService
+                                        .shiftStart(shift)
+                        );
 
+        // ✅ LATE CHECK
         boolean late =
-                now.isAfter(officeTime);
+                now.isAfter(shiftStart);
 
         long lateMinutes = 0;
 
-        // ✅ CALCULATE LATE MINUTES
         if (late) {
 
             lateMinutes =
                     Duration.between(
-                            officeTime,
+                            shiftStart,
                             now
                     ).toMinutes();
         }
 
         Attendance attendance =
                 Attendance.builder()
+
                         .internEmail(email)
+
                         .date(today)
+
                         .checkInTime(now)
+
                         .status(
                                 late
                                         ? "LATE"
                                         : "PRESENT"
                         )
+
                         .lateMarked(late)
+
                         .lateMinutes(lateMinutes)
+
                         .workedMinutes(0L)
+
                         .autoMarked(false)
+
+                        .shiftName(
+                                shift.name()
+                        )
+
+                        .overtimeMinutes(0L)
+
                         .build();
 
         Attendance saved =
@@ -126,13 +172,48 @@ public class AttendanceService {
 
         attendance.setCheckOutTime(out);
 
-        long minutes =
+        // ✅ WORKED MINUTES
+        long workedMinutes =
                 Duration.between(
                         attendance.getCheckInTime(),
                         out
                 ).toMinutes();
 
-        attendance.setWorkedMinutes(minutes);
+        attendance.setWorkedMinutes(
+                workedMinutes
+        );
+
+        // ✅ SHIFT
+        ShiftType shift =
+                attendance.getShiftName() == null
+                        ? ShiftType.MORNING
+                        : ShiftType.valueOf(
+                        attendance.getShiftName()
+                );
+
+        // ✅ SHIFT END
+        LocalDateTime shiftEnd =
+                LocalDate.now()
+                        .atTime(
+                                shiftService
+                                        .shiftEnd(shift)
+                        );
+
+        // ✅ OVERTIME
+        long overtime = 0;
+
+        if (out.isAfter(shiftEnd)) {
+
+            overtime =
+                    Duration.between(
+                            shiftEnd,
+                            out
+                    ).toMinutes();
+        }
+
+        attendance.setOvertimeMinutes(
+                overtime
+        );
 
         return repository.save(attendance);
     }
@@ -190,17 +271,32 @@ public class AttendanceService {
                         )
                         .sum();
 
+        long overtimeMinutes =
+                list.stream()
+                        .mapToLong(a ->
+
+                                a.getOvertimeMinutes() == null
+                                        ? 0
+                                        : a.getOvertimeMinutes()
+                        )
+                        .sum();
+
         double avgHours =
                 list.isEmpty()
                         ? 0
                         : (totalMinutes / 60.0) / list.size();
+
+        double overtimeHours =
+                overtimeMinutes / 60.0;
 
         return new AttendanceAnalyticsDTO(
                 present,
                 late,
                 absent,
                 totalMinutes,
-                avgHours
+                avgHours,
+                overtimeMinutes,
+                overtimeHours
         );
     }
 

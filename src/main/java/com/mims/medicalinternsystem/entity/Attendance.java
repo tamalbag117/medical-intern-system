@@ -44,4 +44,10 @@ public class Attendance {
 
     @Column(name = "late_minutes")
     private Long lateMinutes;
+
+    @Column(name = "shift_name")
+    private String shiftName;
+
+    @Column(name = "overtime_minutes")
+    private Long overtimeMinutes;
 }
