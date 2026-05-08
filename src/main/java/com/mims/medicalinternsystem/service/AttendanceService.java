@@ -42,7 +42,7 @@ public class AttendanceService {
 
     private static final double HOSPITAL_LNG = 79.8612;
 
-    private static final double MAX_DISTANCE_METERS = 300;
+    private static final double MAX_DISTANCE_METERS = 500000;
 
     /* =========================================================
        ✅ NORMAL CHECK IN
