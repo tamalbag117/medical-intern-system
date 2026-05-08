@@ -5,6 +5,7 @@ import com.mims.medicalinternsystem.repository.*;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import com.mims.medicalinternsystem.repository.LeaveRequestRepository;
 
 @Service
 public class AdminAnalyticsService {
@@ -16,7 +17,7 @@ public class AdminAnalyticsService {
     private AttendanceRepository attendanceRepo;
 
     @Autowired
-    private LeaveRepository leaveRepo;
+    private LeaveRequestRepository leaveRepo;
 
     public AdminAnalytics getAnalytics() {
 
