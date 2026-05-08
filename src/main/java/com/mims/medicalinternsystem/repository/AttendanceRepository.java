@@ -26,4 +26,10 @@ public interface AttendanceRepository
             String internEmail,
             String status
     );
+
+    long countByStatus(String status);
+
+    long countByLateMarkedTrue();
+
+    long countByLateMinutesGreaterThan(Long minutes);
 }

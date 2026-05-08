@@ -1,6 +1,6 @@
 package com.mims.medicalinternsystem.service;
 
-
+import com.mims.medicalinternsystem.dto.AttendanceAnalyticsDTO;
 import com.mims.medicalinternsystem.entity.Attendance;
 import com.mims.medicalinternsystem.repository.AttendanceRepository;
 
@@ -10,11 +10,11 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 
 import org.springframework.stereotype.Service;
-import com.mims.medicalinternsystem.dto.AttendanceAnalyticsDTO;
 
 import java.time.Duration;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+
 import java.util.List;
 
 @Service
@@ -30,6 +30,7 @@ public class AttendanceService {
 
         LocalDate today = LocalDate.now();
 
+        // ✅ ALREADY CHECKED IN
         if (
                 repository.findByInternEmailAndDate(
                         email,
@@ -42,23 +43,60 @@ public class AttendanceService {
             );
         }
 
+        LocalDateTime now = LocalDateTime.now();
+
+        // ✅ OFFICE START TIME
+        LocalDateTime officeTime =
+                LocalDate.now()
+                        .atTime(9, 0);
+
+        boolean late =
+                now.isAfter(officeTime);
+
+        long lateMinutes = 0;
+
+        // ✅ CALCULATE LATE MINUTES
+        if (late) {
+
+            lateMinutes =
+                    Duration.between(
+                            officeTime,
+                            now
+                    ).toMinutes();
+        }
+
         Attendance attendance =
                 Attendance.builder()
                         .internEmail(email)
                         .date(today)
-                        .checkInTime(LocalDateTime.now())
+                        .checkInTime(now)
                         .status(
-                                LocalDateTime.now().getHour() >= 9
+                                late
                                         ? "LATE"
                                         : "PRESENT"
                         )
+                        .lateMarked(late)
+                        .lateMinutes(lateMinutes)
                         .workedMinutes(0L)
+                        .autoMarked(false)
                         .build();
 
-        return repository.save(attendance);
+        Attendance saved =
+                repository.save(attendance);
+
+        // ✅ SEVERE LATE WARNING
+        if (lateMinutes >= 30) {
+
+            System.out.println(
+                    "WARNING: "
+                            + email
+                            + " checked in very late"
+            );
+        }
+
+        return saved;
     }
 
-    // ✅ CHECK OUT
     // ✅ CHECK OUT
     public Attendance checkOut() {
 
@@ -69,6 +107,7 @@ public class AttendanceService {
                         email,
                         LocalDate.now()
                 ).orElseThrow(() ->
+
                         new IllegalStateException(
                                 "Please check in first"
                         )
@@ -82,7 +121,8 @@ public class AttendanceService {
             );
         }
 
-        LocalDateTime out = LocalDateTime.now();
+        LocalDateTime out =
+                LocalDateTime.now();
 
         attendance.setCheckOutTime(out);
 
@@ -106,20 +146,10 @@ public class AttendanceService {
                 );
     }
 
-    // ✅ ALL
+    // ✅ ALL ATTENDANCE
     public List<Attendance> allAttendance() {
+
         return repository.findAll();
-    }
-
-    // ✅ USER
-    private String currentUser() {
-
-        Authentication auth =
-                SecurityContextHolder
-                        .getContext()
-                        .getAuthentication();
-
-        return auth.getName();
     }
 
     // ✅ ANALYTICS
@@ -128,7 +158,9 @@ public class AttendanceService {
         String email = currentUser();
 
         List<Attendance> list =
-                repository.findByInternEmailOrderByDateDesc(email);
+                repository.findByInternEmailOrderByDateDesc(
+                        email
+                );
 
         long present =
                 repository.countByInternEmailAndStatus(
@@ -151,6 +183,7 @@ public class AttendanceService {
         long totalMinutes =
                 list.stream()
                         .mapToLong(a ->
+
                                 a.getWorkedMinutes() == null
                                         ? 0
                                         : a.getWorkedMinutes()
@@ -169,5 +202,16 @@ public class AttendanceService {
                 totalMinutes,
                 avgHours
         );
+    }
+
+    // ✅ CURRENT USER
+    private String currentUser() {
+
+        Authentication auth =
+                SecurityContextHolder
+                        .getContext()
+                        .getAuthentication();
+
+        return auth.getName();
     }
 }

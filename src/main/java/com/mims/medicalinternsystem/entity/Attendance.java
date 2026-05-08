@@ -38,4 +38,10 @@ public class Attendance {
 
     @Column(name = "auto_marked")
     private boolean autoMarked;
+
+    @Column(name = "late_marked")
+    private boolean lateMarked;
+
+    @Column(name = "late_minutes")
+    private Long lateMinutes;
 }

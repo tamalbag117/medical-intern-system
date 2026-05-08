@@ -1,8 +1,8 @@
 package com.mims.medicalinternsystem.controller;
 
+import com.mims.medicalinternsystem.dto.AttendanceAnalyticsDTO;
 import com.mims.medicalinternsystem.entity.Attendance;
 import com.mims.medicalinternsystem.service.AttendanceService;
-import com.mims.medicalinternsystem.dto.AttendanceAnalyticsDTO;
 
 import lombok.RequiredArgsConstructor;
 
@@ -51,7 +51,7 @@ public class AttendanceController {
         );
     }
 
-    // ✅ ADMIN/DOCTOR
+    // ✅ ADMIN / DOCTOR
     @GetMapping("/all")
     @PreAuthorize("hasAnyRole('ADMIN','DOCTOR')")
     public ResponseEntity<List<Attendance>> all() {
@@ -63,7 +63,7 @@ public class AttendanceController {
 
     // ✅ ANALYTICS
     @GetMapping("/analytics")
-    @PreAuthorize("hasRole('INTERN')")
+    @PreAuthorize("hasAnyRole('INTERN','ADMIN','DOCTOR')")
     public ResponseEntity<AttendanceAnalyticsDTO> analytics() {
 
         return ResponseEntity.ok(
