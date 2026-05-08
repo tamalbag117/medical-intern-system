@@ -1,7 +1,10 @@
 package com.mims.medicalinternsystem.controller;
 
 import com.mims.medicalinternsystem.dto.AttendanceAnalyticsDTO;
+import com.mims.medicalinternsystem.dto.GeoAttendanceRequest;
+
 import com.mims.medicalinternsystem.entity.Attendance;
+
 import com.mims.medicalinternsystem.service.AttendanceService;
 
 import lombok.RequiredArgsConstructor;
@@ -21,7 +24,10 @@ public class AttendanceController {
 
     private final AttendanceService service;
 
-    // ✅ CHECK IN
+    /* =========================================================
+       ✅ NORMAL CHECK IN
+    ========================================================= */
+
     @PostMapping("/checkin")
     @PreAuthorize("hasRole('INTERN')")
     public ResponseEntity<Attendance> checkIn() {
@@ -31,7 +37,25 @@ public class AttendanceController {
         );
     }
 
-    // ✅ CHECK OUT
+    /* =========================================================
+       ✅ GEO CHECK IN
+    ========================================================= */
+
+    @PostMapping("/geo-checkin")
+    @PreAuthorize("hasRole('INTERN')")
+    public ResponseEntity<Attendance> geoCheckIn(
+            @RequestBody GeoAttendanceRequest request
+    ) {
+
+        return ResponseEntity.ok(
+                service.geoCheckIn(request)
+        );
+    }
+
+    /* =========================================================
+       ✅ CHECK OUT
+    ========================================================= */
+
     @PostMapping("/checkout")
     @PreAuthorize("hasRole('INTERN')")
     public ResponseEntity<Attendance> checkOut() {
@@ -41,7 +65,10 @@ public class AttendanceController {
         );
     }
 
-    // ✅ MY ATTENDANCE
+    /* =========================================================
+       ✅ MY ATTENDANCE
+    ========================================================= */
+
     @GetMapping("/my")
     @PreAuthorize("hasRole('INTERN')")
     public ResponseEntity<List<Attendance>> my() {
@@ -51,7 +78,10 @@ public class AttendanceController {
         );
     }
 
-    // ✅ ADMIN / DOCTOR
+    /* =========================================================
+       ✅ ALL ATTENDANCE
+    ========================================================= */
+
     @GetMapping("/all")
     @PreAuthorize("hasAnyRole('ADMIN','DOCTOR')")
     public ResponseEntity<List<Attendance>> all() {
@@ -61,9 +91,14 @@ public class AttendanceController {
         );
     }
 
-    // ✅ ANALYTICS
+    /* =========================================================
+       ✅ ANALYTICS
+    ========================================================= */
+
     @GetMapping("/analytics")
-    @PreAuthorize("hasAnyRole('INTERN','ADMIN','DOCTOR')")
+    @PreAuthorize(
+            "hasAnyRole('INTERN','ADMIN','DOCTOR')"
+    )
     public ResponseEntity<AttendanceAnalyticsDTO> analytics() {
 
         return ResponseEntity.ok(

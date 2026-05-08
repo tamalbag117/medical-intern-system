@@ -1,6 +1,7 @@
 package com.mims.medicalinternsystem.service;
 
 import com.mims.medicalinternsystem.dto.AttendanceAnalyticsDTO;
+import com.mims.medicalinternsystem.dto.GeoAttendanceRequest;
 
 import com.mims.medicalinternsystem.entity.Attendance;
 import com.mims.medicalinternsystem.entity.User;
@@ -33,8 +34,76 @@ public class AttendanceService {
 
     private final ShiftService shiftService;
 
-    // ✅ CHECK IN
+    /* =========================================================
+       ✅ HOSPITAL GPS LOCATION
+    ========================================================= */
+
+    private static final double HOSPITAL_LAT = 6.9271;
+
+    private static final double HOSPITAL_LNG = 79.8612;
+
+    private static final double MAX_DISTANCE_METERS = 300;
+
+    /* =========================================================
+       ✅ NORMAL CHECK IN
+    ========================================================= */
+
     public Attendance checkIn() {
+
+        return createAttendance(
+                null,
+                null,
+                false,
+                null
+        );
+    }
+
+    /* =========================================================
+       ✅ GEO CHECK IN
+    ========================================================= */
+
+    public Attendance geoCheckIn(
+            GeoAttendanceRequest request
+    ) {
+
+        double distance =
+                calculateDistanceMeters(
+                        HOSPITAL_LAT,
+                        HOSPITAL_LNG,
+                        request.getLatitude(),
+                        request.getLongitude()
+                );
+
+        if (distance > MAX_DISTANCE_METERS) {
+
+            throw new IllegalStateException(
+                    "You are outside hospital premises"
+            );
+        }
+
+        return createAttendance(
+                request.getLatitude(),
+                request.getLongitude(),
+                true,
+                distance
+        );
+    }
+
+    /* =========================================================
+       ✅ COMMON ATTENDANCE CREATION
+    ========================================================= */
+
+    private Attendance createAttendance(
+
+            Double latitude,
+
+            Double longitude,
+
+            Boolean geoVerified,
+
+            Double distance
+
+    ) {
 
         String email = currentUser();
 
@@ -64,7 +133,7 @@ public class AttendanceService {
                                 )
                         );
 
-        // ✅ DEFAULT SHIFT
+        // ✅ SHIFT
         ShiftType shift =
                 user.getShiftType() == null
                         ? ShiftType.MORNING
@@ -81,7 +150,7 @@ public class AttendanceService {
                                         .shiftStart(shift)
                         );
 
-        // ✅ LATE CHECK
+        // ✅ LATE DETECTION
         boolean late =
                 now.isAfter(shiftStart);
 
@@ -125,12 +194,24 @@ public class AttendanceService {
 
                         .overtimeMinutes(0L)
 
+                        /* =========================
+                           ✅ GEOLOCATION
+                        ========================= */
+
+                        .latitude(latitude)
+
+                        .longitude(longitude)
+
+                        .geoVerified(geoVerified)
+
+                        .distanceFromHospital(distance)
+
                         .build();
 
         Attendance saved =
                 repository.save(attendance);
 
-        // ✅ SEVERE LATE WARNING
+        // ✅ HR WARNING
         if (lateMinutes >= 30) {
 
             System.out.println(
@@ -143,7 +224,10 @@ public class AttendanceService {
         return saved;
     }
 
-    // ✅ CHECK OUT
+    /* =========================================================
+       ✅ CHECK OUT
+    ========================================================= */
+
     public Attendance checkOut() {
 
         String email = currentUser();
@@ -218,7 +302,10 @@ public class AttendanceService {
         return repository.save(attendance);
     }
 
-    // ✅ MY ATTENDANCE
+    /* =========================================================
+       ✅ MY ATTENDANCE
+    ========================================================= */
+
     public List<Attendance> myAttendance() {
 
         return repository
@@ -227,13 +314,19 @@ public class AttendanceService {
                 );
     }
 
-    // ✅ ALL ATTENDANCE
+    /* =========================================================
+       ✅ ALL ATTENDANCE
+    ========================================================= */
+
     public List<Attendance> allAttendance() {
 
         return repository.findAll();
     }
 
-    // ✅ ANALYTICS
+    /* =========================================================
+       ✅ ANALYTICS
+    ========================================================= */
+
     public AttendanceAnalyticsDTO analytics() {
 
         String email = currentUser();
@@ -300,7 +393,10 @@ public class AttendanceService {
         );
     }
 
-    // ✅ CURRENT USER
+    /* =========================================================
+       ✅ CURRENT USER
+    ========================================================= */
+
     private String currentUser() {
 
         Authentication auth =
@@ -309,5 +405,50 @@ public class AttendanceService {
                         .getAuthentication();
 
         return auth.getName();
+    }
+
+    /* =========================================================
+       ✅ DISTANCE CALCULATOR
+    ========================================================= */
+
+    private double calculateDistanceMeters(
+
+            double lat1,
+
+            double lon1,
+
+            double lat2,
+
+            double lon2
+
+    ) {
+
+        double earthRadius = 6371000;
+
+        double dLat =
+                Math.toRadians(lat2 - lat1);
+
+        double dLon =
+                Math.toRadians(lon2 - lon1);
+
+        double a =
+                Math.sin(dLat / 2)
+                        * Math.sin(dLat / 2)
+                        +
+                        Math.cos(Math.toRadians(lat1))
+                                *
+                                Math.cos(Math.toRadians(lat2))
+                                *
+                                Math.sin(dLon / 2)
+                                *
+                                Math.sin(dLon / 2);
+
+        double c =
+                2 * Math.atan2(
+                        Math.sqrt(a),
+                        Math.sqrt(1 - a)
+                );
+
+        return earthRadius * c;
     }
 }
